@@ -16,7 +16,7 @@ MSSQLClient 		= new MSSQLConnector(
 
 MyTestVariables 	= {}
 
-# Name for test Table
+# Name for test table
 TABLENAME 		= 'TediousTestTable'
 
 describe 'Tedious MSSQL Connector', ->
