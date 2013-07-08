@@ -5,7 +5,7 @@ DataTypes 	= require('tedious').TYPES
 Request 	= require('tedious').Request
 
 
-class MSSQLRequestBase extends require('../base')
+class MSSQLRequestBase extends require('./lib/base')
 
 	constructor: ( @statement, parent )->
 		super
