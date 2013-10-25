@@ -9,11 +9,11 @@ MSSQLClient 		=  	new MSSQLConnector
 						min: 0
 						idleTimeoutMillis: 30000
 					connection:
-						userName: "sa"
-						password: "never"
-						server: "192.168.11.101"
+						userName: ""
+						password: ""
+						server: ""
 						options: 
-							database: "CZ_Modules"
+							database: ""
 						
 
 TESTVARIABLES 	= {}
