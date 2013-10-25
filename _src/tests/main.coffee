@@ -224,7 +224,6 @@ describe "Test for node-mssql-connector", ->
 			" )
 			query.param( "id", "Int",  TESTVARIABLES.updatedID )
 			query.exec ( err, res ) ->
-				console.log res
 				res.should.have.keys( ["result", "rowcount"] )
 				( res.rowcount ).should.equal( 1 )
 

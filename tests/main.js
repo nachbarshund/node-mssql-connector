@@ -162,7 +162,6 @@
         query.param("id", "Int", TESTVARIABLES.updatedID);
         return query.exec(function(err, res) {
           var model, result;
-          console.log(res);
           res.should.have.keys(["result", "rowcount"]);
           res.rowcount.should.equal(1);
           result = res.result;
