@@ -2,24 +2,27 @@
 should 			= 	require( "should" )
 async 			= 	require "async"
 
-MSSQLConnector 	= require( '../lib/mssqlconnector')
-MSSQLClient 		= new MSSQLConnector( 
-				connection: { 
-					userName: '', 
-					password: '', 
-					server: '', 
-					options: { 
-						database: '' 
-					} 
-				} 
-			)
+MSSQLConnector 	= 	require( "../lib/mssqlconnector" )
+MSSQLClient 		=  	new MSSQLConnector
+					settings:
+						max: 20
+						min: 0
+						idleTimeoutMillis: 30000
+					connection:
+						userName: "sa"
+						password: "never"
+						server: "192.168.11.101"
+						options: 
+							database: "CZ_Modules"
+						
 
-MyTestVariables 	= {}
+TESTVARIABLES 	= {}
 
 # Name for test table
-TABLENAME 		= 'TediousTestTable'
+TABLENAME 		= "NMSQLCON_Testtable"
 
-describe 'Tedious MSSQL Connector', ->
+
+describe "Test for node-mssql-connector", ->
 
 	# Set default timeout
 	@timeout( 5000 )
@@ -32,17 +35,16 @@ describe 'Tedious MSSQL Connector', ->
 		done()
 		return
 
-	###
-	describe 'CREATE statements', ->
-		
-		it "Create table", ( done ) =>
 
+	describe "Database Statements", ->
+
+		it "CREATE table (where all tests will be executed)", ( done ) =>
 			query = MSSQLClient.query( "
 					CREATE TABLE #{ TABLENAME } 
 					(
 						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
-						Name varchar(250) default 'Hans',
-						Jahrgang int,
+						Name varchar( 250 ) default '',
+						jahrgang int,
 						Created smalldatetime default getDate()
 					)
 			" )
@@ -51,12 +53,12 @@ describe 'Tedious MSSQL Connector', ->
 				done()
 				return	
 			return
-	###	
 
-	describe 'Error handling', ->
+
+	describe "Error handling and syntax validation checks", ->
 		
 		it "Error on empty statement", ( done )->
-			query = MSSQLClient.query( "")
+			query = MSSQLClient.query( "" )
 			query.should.not.be.ok
 			done()
 			return
@@ -66,40 +68,40 @@ describe 'Tedious MSSQL Connector', ->
 				SELECT * 
 				FROM #{ TABLENAME } 
 				WHERE id = @id
-			")
+			" )
 			query.should.be.ok
 			done()
 			return
 
-		it "Set params two params on the same field name (Except: error)", ( done )->
+		it "Set params two params on the same field name (Except: error)", ( done ) ->
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME } 
 				WHERE id = @id
-			")
+			" )
 			( () ->
-				query.param( 'id', 'Int',  100 )
-				query.param( 'id', 'Int',  200 )
+				query.param( "id", "Int",  100 )
+				query.param( "id", "Int",  200 )
 			).should.throw()
 			done()
 			return
 
 
-		it "Set params which are not in statement", ( done )->
+		it "Set params which are not in statement", ( done ) ->
 			query = MSSQLClient.query( "
-				SELECT * FROM 
-				#{ TABLENAME } 
+				SELECT * 
+				FROM #{ TABLENAME } 
 				WHERE id = @id
-			")
+			" )
 			
 			( () ->
-				query.param( 'id', 'Int',  200 )
-				query.param( 'name', 'Int',  100 )
+				query.param( "id", "Int",  200 )
+				query.param( 'name', "Int",  100 )
 			).should.throw()
 			done()
 			return
 
-		it "Insert new item with wrong datatype", ( done )->
+		it "Insert new item with wrong datatype", ( done ) ->
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -109,10 +111,10 @@ describe 'Tedious MSSQL Connector', ->
 					@name, 
 					@jahrgang 
 				)
-			'")
+			'" )
 			( () ->
-				query.param( 'name', 'VarChar',  "User Name" )
-				query.param( 'jahrgang', 'wrongdatatype',  1986 )
+				query.param( "name", "VarChar",  "User Name" )
+				query.param( "jahrgang", "wrongdatatype",  1986 )
 			).should.throw()
 			done()
 			return
@@ -122,100 +124,116 @@ describe 'Tedious MSSQL Connector', ->
 				DELETE FROM #{ TABLENAME }  
 				WHERE id = @id
 			" )
-			query.param( 'id', 'Int',  999999999 )
+			query.param( "id", "Int",  999999999 )
 			query.exec ( err, res ) ->
-				(res.rowcount).should.equal(0)
+				( res.rowcount ).should.equal( 0 )
 				done()
 				return
+	
 
-
-	describe 'INSERT statements', ->
+	describe "INSERT statements", ->
 		
 		it "Insert new item", ( done )=>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
-					Jahrgang 
+					jahrgang 
 				) 
 				VALUES( @name, @jahrgang )
-				SELECT @@IDENTITY AS 'ID'
-			")
-			query.param( 'name', 'VarChar',  "Username" )
-			query.param( 'jahrgang', 'Int',  1986 )
+				SELECT @@IDENTITY AS 'id'
+			" )
+			query.param( "name", "VarChar",  "Username" )
+			query.param( "jahrgang", "Int",  23 )
 			query.exec ( err, res ) ->
 				res.should.have.keys( ['result', 'rowcount'] )
-				(res.rowcount).should.equal( 2 )
+				( res.rowcount ).should.equal( 2 )
 				
 				result = res.result
-				result.should.be.an.instanceOf(Array)
-				result[0].should.have.keys( ['id'] )
+				result.should.be.an.instanceOf( Array )
+				result[ 0 ].should.have.keys( ["id"] )
 
 				# Save this for next check
-				MyTestVariables.insertnewid = result[ 0 ].id
+				TESTVARIABLES.insertnewid = result[ 0 ].id
 				
 				done()
 				return				
 			return
 
-	describe 'UPDATE statements', ->
+	
+	describe "UPDATE statements", ->
 		
 		it "Update inserted item (First insert new one)", ( done )=>
-			query = MSSQLClient.query( "INSERT INTO #{ TABLENAME } ( Name, Jahrgang ) VALUES( @name, @jahrgang ) SELECT @@IDENTITY AS 'ID'" )
-			query.param( 'name', 'VarChar',  "Hänschen Müller" )
-			query.param( 'jahrgang', 'Int',  1986 )
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( Name, Jahrgang ) 
+				VALUES( @name, @jahrgang ) SELECT @@IDENTITY AS 'id'
+			" )
+			query.param( "name", "VarChar",  "Hänschen Müller" )
+			query.param( "jahrgang", "Int",  1986 )
 			query.exec ( err, res ) ->
 				
-				MyTestVariables.updatedID = res.result[0].id
+				TESTVARIABLES.updatedID = res.result[ 0 ].id
 
-				query = MSSQLClient.query( "UPDATE #{ TABLENAME }  SET Name = @name WHERE ID = @id" )
-				query.param( 'id', 'Int',   MyTestVariables.updatedID )
-				query.param( 'name', 'VarChar',  "UpdatedName" )
+				query = MSSQLClient.query( "
+					UPDATE #{ TABLENAME }  
+					SET Name = @name 
+					WHERE ID = @id
+				" )
+				query.param( "id", "Int",   TESTVARIABLES.updatedID )
+				query.param( "name", "VarChar",  "UpdatedName" )
 				query.exec ( err, res ) ->
 					res.should.have.keys( ['result', 'rowcount'] )
-					(res.rowcount).should.equal(1)
+					( res.rowcount ).should.equal( 1 )
 
 					result = res.result
-					result.should.be.an.instanceOf(Array)
+					result.should.be.an.instanceOf( Array )
 					
 					done()
 					return
 				return
-		
 
-	describe 'SELECT statements', ->
-		
+
+	describe "SELECT statements", ->
+
 		it "Get latest inserted ID", ( done )=>
-			query = MSSQLClient.query( "SELECT * FROM #{ TABLENAME }  WHERE id = @id" )
-			query.param( 'id', 'Int',  MyTestVariables.insertnewid )
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  TESTVARIABLES.insertnewid )
 			query.exec ( err, res ) ->
 				
-				res.should.have.keys( ['result', 'rowcount'] )
-				(res.rowcount).should.equal(1)
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 1 )
 
 				result = res.result
-				result.should.be.an.instanceOf(Array)
+				result.should.be.an.instanceOf( Array )
 
-				model = result[0]
-				model.should.have.keys( ['id', 'name', 'jahrgang', 'created'] )
+				model = result[ 0 ]
+				model.should.have.keys( ["id", "name", "jahrgang", "created"] )
 				
 				done()
 				return
 		
 		
 		it "Get updated data", ( done )=>
-			query = MSSQLClient.query( "SELECT * FROM #{ TABLENAME }  WHERE id = @id" )
-			query.param( 'id', 'Int',  MyTestVariables.updatedID )
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME } 
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  TESTVARIABLES.updatedID )
 			query.exec ( err, res ) ->
-				
-				res.should.have.keys( ['result', 'rowcount'] )
-				(res.rowcount).should.equal(1)
+				console.log res
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 1 )
 
 				result = res.result
-				result.should.be.an.instanceOf(Array)
+				result.should.be.an.instanceOf( Array )
 
-				model = result[0]
-				model.should.have.keys( ['id', 'name', 'jahrgang', 'created'] )
-				(model.name).should.equal( 'UpdatedName' )
+				model = result[ 0 ]
+				model.should.have.keys( ["id", "name", "jahrgang", "created"] )
+				( model.name ).should.equal( "UpdatedName" )
 				
 				done()
 				return
@@ -225,81 +243,43 @@ describe 'Tedious MSSQL Connector', ->
 		it "Select with LIKE statement", ( done )=>
 			query = MSSQLClient.query( "
 				SELECT     *
-				FROM         #{ TABLENAME } 
+				FROM       #{ TABLENAME } 
 				WHERE     Name LIKE @Update
 			" )
-			query.param( 'Update', 'VarChar',  "%Name%" )
+			query.param( "Update", "VarChar",  "%Name%" )
 			query.exec ( err, res ) ->
-				res.should.have.keys( ['result', 'rowcount'] )
+				res.should.have.keys( ["result", "rowcount"] )
 				
 				done()
 				return
-		
-	###
-	describe 'Stored Procedures', ->
-		
-		it "Call stored procedure updated data", ( done )=>
-			storedprod = MSSQLClient.storedprod( "tedious_get" )
-			storedprod.param( 'id', 'Int',  MyTestVariables.insertnewid )
-			storedprod.exec ( err, res ) ->
-				res.should.be.a('object').and.have.property('result')
-				(res.rowcount).should.equal(1)
-				done()
-				return
-		
-		
-		it "Call stored procedure with output parameter (multi parameter) ", ( done )=>
-			storedprod = MSSQLClient.storedprod( "tedious_get2")
-			storedprod.param( 'id', 'Int',  MyTestVariables.insertnewid )
-			storedprod.outParam( 'Total', 'Int' )
-			storedprod.outParam( 'Teststring', 'VarChar' )
-			storedprod.exec ( err, res ) ->
-				res.should.be.a('object').and.have.property('output')
-				res.output[ 0 ].should.have.ownProperty('Total')
-				res.output[ 1 ].should.have.ownProperty('Teststring')
-				done()
-				return
-		
-		it "Call stored procedure with multi queries ", ( done )=>
-			storedprod = MSSQLClient.storedprod( "tedious_get3")
-			storedprod.param( 'id', 'Int',  MyTestVariables.insertnewid )
-			storedprod.exec ( err, res ) ->
-				res.should.have.keys( ['result', 'rowcount'] )
-				(res.rowcount).should.equal(2)
-				done()
-				return
-	###
+	
 
-	describe 'Syntax checks', ->
+	describe "Syntax checks", ->
 		
-		it "Check @Declare problem", ( done )=>
-			query = MSSQLClient.query( "
-				DECLARE @name varchar 
-				SELECT @name = name FROM #{ TABLENAME }  WHERE id=@id
-				SELECT * FROM #{ TABLENAME }  WHERE name = @name" 
-			, {sqlparams: true})
-			query.param( 'id', 'Int',  MyTestVariables.insertnewid )
-			query.exec ( err, res ) ->
-				res.should.have.keys( ['result', 'rowcount'] )
-				done()
-				return
-
-
 		it "Test SQL injection", ( done )=>
-			query = MSSQLClient.query( "SELECT * FROM #{ TABLENAME }  WHERE name = @name" )
-			query.param( 'name', 'VarChar',  "sakljasd' OR 1=1 or name='" )
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE name = @name
+			" )
+			query.param( "name", "VarChar",  "sakljasd' OR 1=1 or name='" )
 			query.exec ( err, res ) ->
-				res.should.have.keys( ['result', 'rowcount'] )
-				(res.rowcount).should.equal(0)
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 0 )
 				done()
 				return
 	
-	describe 'Speed tests', ->
+
+	describe "Speed tests", ->
 
 		@timeout( 900000000 )
-		_queryFunc = (idx, cb)->
-			query = MSSQLClient.query( "SELECT TOP 1 * FROM #{ TABLENAME }  WHERE id = @id" )
-			query.param( 'id', 'Int',  idx )
+		_queryFunc = ( idx, cb )->
+			query = MSSQLClient.query( "
+				SELECT TOP 1 ID 
+				FROM #{ TABLENAME }  
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  idx )
 			query.exec cb
 			return
 		
@@ -316,28 +296,30 @@ describe 'Tedious MSSQL Connector', ->
 
 		return
 
-	describe 'DELETE statements', ->
+
+	describe "DELETE statements", ->
 		
 		it "Delete latest inserted ID", ( done )=>
-			query = MSSQLClient.query( "DELETE FROM #{ TABLENAME }  WHERE id = @id" )
-			query.param( 'id', 'Int',  MyTestVariables.insertnewid )
+			query = MSSQLClient.query( "
+				DELETE FROM #{ TABLENAME }  
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  TESTVARIABLES.insertnewid )
 			query.exec ( err, res ) ->				
-				(res.rowcount).should.equal(1)
+				( res.rowcount ).should.equal( 1 )
 				result = res.result
-				result.should.be.an.instanceOf(Array)
+				result.should.be.an.instanceOf( Array )
 				done()
 				return
-
-		###
-		it "Delete table", ( done ) =>
+		
+		it "Delete the created table", ( done ) =>
 
 			query = MSSQLClient.query( "
-				DROP TABLE #{ TABLENAME } 
+				DROP TABLE Dbo.#{ TABLENAME } 
 			" )
 			query.exec ( err, res ) ->
 				should.not.exist( err )
 				done()
 				return	
 			return
-		###
 		return

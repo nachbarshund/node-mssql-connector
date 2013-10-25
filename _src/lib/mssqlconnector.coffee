@@ -1,22 +1,24 @@
-_ 		= require('lodash')._
-extend 	= require('extend')
-Connection 	= require('tedious').Connection
-DataTypes 	= require('tedious').TYPES
-Request 	= require('tedious').Request
+_ 			= require('lodash')._
+extend 		= require('extend')
+Connection 		= require('tedious').Connection
+ConnectionPool 	= require('tedious-connection-pool')
+DataTypes 		= require('tedious').TYPES
+Request 		= require('tedious').Request
 
 
 class MSSQLRequestBase extends require('./base')
 
-	constructor: ( @statement, parent )->
+	constructor: ( @statement, parent ) ->
 		super
 
 		# Set the defaults
-		@_params 	= {}
-		@_outparams 	= {}
-		@_fields 	= []
+		@_params 		= {}
+		@_outparams 		= {}
+		@_fields 		= []	
 
-		@connection 	= parent.connection
-		@config 	= parent.config
+		# Get data from paren
+		@config 		= parent.config
+		@connectionpool 	= parent.connectionpool
 
 		@_setParams()
 		return
@@ -59,45 +61,51 @@ class MSSQLRequestBase extends require('./base')
 		if not @_checkParams()
 			return
 
-		# Start when connection is there
-		@connection.on 'connect', ( err ) =>
+
+		@connectionpool.requestConnection ( err, connection ) =>
 			if err
 				@_handleError( cb, 'connection-failed', err )
 				return
-			
-			# Result which will be returned
-			result 	= []
-			output 	= []
 
-			request = new Request @statement, (err, rowCount) =>
+			# Start when connection is there
+			connection.on 'connect', ( err ) =>
 				if err
-					@_handleError( cb, 'request-error', err )
+					@_handleError( cb, 'connection-failed', err )
+					return
+				
+				# Result which will be returned
+				result 	= []
+				output 	= []
+
+				request = new Request @statement, (err, rowCount) =>
+					if err
+						@_handleError( cb, 'request-error', err )
+						return
+
+					returnobj = 
+						result: result
+						rowcount: rowCount
+
+					# Return the data
+					cb( null,  returnobj )
 					return
 
-				returnobj = 
-					result: result
-					rowcount: rowCount
+				request.on 'row', (columns) =>
+					result.push( @_parseRow( columns ) )
+					return
 
-				# Return the data
-				cb( null,  returnobj )
+				# This is only called if there are any output parameters in SQL 
+				request.on 'returnValue', ( key, value, options )->
+					_key = key?.toString()
+					obj = {}
+					obj[ _key ] = value
+					output.push( obj )
+					return
+				
+				@_setRequestParams request,  =>
+					connection.execSql( request )
+					return
 				return
-
-			request.on 'row', (columns) =>
-				result.push( @_parseRow( columns ) )
-				return
-
-			# This is only called if there are any output parameters in SQL 
-			request.on 'returnValue', ( key, value, options )->
-				_key = key?.toString()
-				obj = {}
-				obj[ _key ] = value
-				output.push( obj )
-				return
-			
-			@_setRequestParams request,  =>
-				@connection.execSql( request )
-				return
-			return
 		return
 
 	
@@ -239,7 +247,6 @@ class MSSQLRequestBase extends require('./base')
 		return DataTypes[ datatype ]
 
 
-
 	###
 	## setParams
 	
@@ -351,51 +358,55 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 		if not @_checkParams()
 			return
 
-		# Start when connection is there
-		@connection.on 'connect', (err) =>
+		@connectionpool.requestConnection ( err, connection ) =>
 			if err
 				@_handleError( cb, 'connection-failed', err )
 				return
-			
-			# Result which will be returned
-			result 	= []
-			output 	= []
 
-			return
-			request = new Request @statement, (err, rowCount) =>
+			# Start when connection is there
+			connection.on 'connect', (err) =>
 				if err
-					@_handleError( cb, 'request-error', err )
+					@_handleError( cb, 'connection-failed', err )
+					return
+				
+				# Result which will be returned
+				result 	= []
+				output 	= []
+
+				request = new Request @statement, ( err, rowCount ) =>
+					if err
+						@_handleError( cb, 'request-error', err )
+						return
+
+					returnobj = 
+						result: result
+						rowcount: rowCount
+						 
+					# Return output if it is stored procedure	
+					if output?.length
+						returnobj.output = output
+
+					# Return the data
+					cb( null,  returnobj )
 					return
 
-				returnobj = 
-					result: result
-					rowcount: rowCount
-					 
-				# Return output if it is stored procedure	
-				if output?.length
-					returnobj.output = output
+				request.on 'row', (columns) =>
+					result.push( @_parseRow( columns ) )
+					return
 
-				# Return the data
-				cb( null,  returnobj )
-				return
-
-			request.on 'row', (columns) =>
-				result.push( @_parseRow( columns ) )
-				return
-
-			# This is only called if there are any output parameters in SQL 
-			request.on 'returnValue', ( key, value, options )->
-				_key 		= key?.toString()
-				obj 		= {}
-				obj[ _key ] 	= value
-				output.push( obj )
-				return
-			
-			@_setRequestParams request,  =>
-				@_setOutputParams( @connection, request )
+				# This is only called if there are any output parameters in SQL 
+				request.on 'returnValue', ( key, value, options )->
+					_key 		= key?.toString()
+					obj 		= {}
+					obj[ _key ] 	= value
+					output.push( obj )
+					return
+				
+				@_setRequestParams request,  =>
+					@_setOutputParams( connection, request )
+					return
 				return
 			return
-		return
 
 
 	###
@@ -425,8 +436,8 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 	###
 	_setOutputParams: ( connection, request ) =>
 		for outputparam, param  of @_outparams
-			request.addOutputParameter( outputparam, param.type)
-		connection.callProcedure(request)
+			request.addOutputParameter( outputparam, param.type )
+		connection.callProcedure( request )
 		return
 
 	###
@@ -451,33 +462,86 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 
 
 
-module.exports = class MSSQLConnector extends require( './base' )
+module.exports = class MSSQLConnector extends require( "./base" )
 	
+	###
+	## _defaults
+	
+	`mssqlconnector._defaults( id, cb )`
+	
+	Set the defaults. Some defaults are set in tedious.
+	
+	@api private
+	###
 	_defaults: =>
 		_defaults = 
 			connection:
-				userName: 	''
-				password: 	''
-				server: 	''
+				userName: 		''
+				password: 		''
+				server: 		''
+			settings:
+				max: 			20
+				min: 			0
+				idleTimeoutMillis: 	30000
 			sqlparams: false
 
 		return _defaults
 
-	init: ( options = {} )=>
-		@config = extend( true, {}, @config, options )
 
+	###
+	## init
+	
+	`mssqlconnector.init( id, cb )`
+	
+	Initilaize the connection. We will use the connection pool in _initConnection()
+	
+	@param { Object } options Settings. Structure like _defaults 
+	
+	@api public
+	###
+	init: ( options = {} )=>
 		# Initialize the connection to server
 		@_initConnection()
 		return
 
-	query: (statement, options = {})=>
+
+	###
+	## query
+	
+	`mssqlconnector.query( id, cb )`
+	
+	Run a SQL query. Initilaize new request for every query.
+	
+	@param { String } statement The complete SQL statement 
+	@param { Object } options Settings for connection and connectionpool
+		
+	@return { Function } Return SQL query
+
+	@api public
+	###
+	query: ( statement, options = {} )=>
 		if not statement?.length
 			return false
 
 		@init( options )
 		return new MSSQLRequestBase( statement, @ )
 
-	storedprod: (statement, options = {})=>
+
+	###
+	## storedprod
+	
+	`mssqlconnector.storedprod( id, cb )`
+	
+	Run q stored procecdure.
+	
+	@param { String } statement The complete stored procedure statement
+	@param { Object } options Settings for connection and connectionpool
+	
+	@return { Function } Return Initilaized stored procedure.
+
+	@api public
+	###
+	storedprod: ( statement, options = {} )=>
 		if not statement?.length
 			return false
 		@init( options )
@@ -489,13 +553,10 @@ module.exports = class MSSQLConnector extends require( './base' )
 	
 	`mssqlconnector.initConnection()`
 	
-	Init the connection and reconnect on losing 
+	Init the connection including connection pool for multiple statements.
 	
 	@api private
 	###
 	_initConnection: =>
-		@connection = new Connection( @config.connection )
-		@connection.on 'end', ()=>
-			# Reconnect
-			@_initConnection()
-			return
+		@connectionpool = new ConnectionPool( @config.settings, @config.connection )
+		return

@@ -1,5 +1,5 @@
-extend 	= require('extend')
-_ 		= require('lodash')._
+extend 	= require( "extend" )
+_ 		= require( "lodash" )._
 
 # # Basic Module
 
@@ -7,16 +7,40 @@ _ 		= require('lodash')._
 
 module.exports = class Base
 
+	###
+	## _defaults
+	
+	`base._defaults( id, cb )`
+	
+	Set defaults as empty. They will be set in extened classes.
+	
+	@return { Object } Return empty object 
+	
+	@api private
+	###
 	_defaults: =>
 		return {}
 
-	constructor: ( options )->
-		@config = extend( true, {}, @_defaults(), options )
 
+	###
+	## constructor
+	
+	`base.constructor( id, cb )`
+	
+	Initialized and set the config.
+	
+	@param { Object } options Desc 
+	
+	@api private
+	###
+	constructor: ( options )->
+		@config =  extend( true, {}, @_defaults(), options )
+
+		# If an initilized function is given then it will be called
 		@initialize() if @initialize
 		return
 
-	# handle a error
+
 	###
 	## _handleError
 	
@@ -30,9 +54,6 @@ module.exports = class Base
 	@api private
 	###
 	_handleError: ( cb, err, data = {} )=>
-		#console.log 'DEBUG', cb, err, data
-		
-
 		# try to create a error Object with humanized message
 		if _.isString( err )
 			_err = new Error()
