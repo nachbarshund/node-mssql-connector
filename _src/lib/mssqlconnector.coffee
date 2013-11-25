@@ -1,6 +1,5 @@
 _ 			= require('lodash')._
 extend 		= require('extend')
-Connection 		= require('tedious').Connection
 ConnectionPool 	= require('tedious-connection-pool')
 DataTypes 		= require('tedious').TYPES
 Request 		= require('tedious').Request
