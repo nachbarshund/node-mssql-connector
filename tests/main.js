@@ -201,27 +201,38 @@
       this.timeout(900000000);
       _queryFunc = function(idx, cb) {
         var query;
-        query = MSSQLClient.query("				SELECT TOP 1 ID 				FROM " + TABLENAME + "  				WHERE id = @id			");
-        query.param("id", "Int", idx);
-        query.exec(cb);
+        query = MSSQLClient.query("				SELECT TOP 1 ID 				FROM " + TABLENAME + "  			");
+        query.exec(function(err, resp) {
+          if (err) {
+            cb(err);
+            return;
+          }
+          if (resp.rowcount === 1) {
+            cb(null, "Row: " + idx);
+          } else {
+            cb(true, 'No recorcd error');
+          }
+        });
       };
-      it("Seriel from ID 80 - 327", function(done) {
+      it("Seriel from ID (500 records)", function(done) {
         var _i, _results;
         return async.mapSeries((function() {
           _results = [];
-          for (var _i = 80; 80 <= .327 ? _i < .327 : _i > .327; 80 <= .327 ? _i++ : _i--){ _results.push(_i); }
+          for (_i = 1; _i <= 500; _i++){ _results.push(_i); }
           return _results;
         }).apply(this), _queryFunc, function(err, resp) {
+          should.not.exist(err);
           done();
         });
       });
-      it("Parallel from ID 80 - 327", function(done) {
+      it("Parallel from ID (500 records)", function(done) {
         var _i, _results;
         return async.map((function() {
           _results = [];
-          for (var _i = 80; 80 <= .327 ? _i < .327 : _i > .327; 80 <= .327 ? _i++ : _i--){ _results.push(_i); }
+          for (var _i = 1; 1 <= .500 ? _i < .500 : _i > .500; 1 <= .500 ? _i++ : _i--){ _results.push(_i); }
           return _results;
         }).apply(this), _queryFunc, function(err, resp) {
+          should.not.exist(err);
           done();
         });
       });

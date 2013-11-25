@@ -19,7 +19,7 @@ MSSQLClient 		=  	new MSSQLConnector
 TESTVARIABLES 	= {}
 
 # Name for test table
-TABLENAME 		= "NMSQLCON_Testtable"
+TABLENAME 	= "NMSQLCON_Testtable"
 
 
 describe "Test for node-mssql-connector", ->
@@ -35,9 +35,7 @@ describe "Test for node-mssql-connector", ->
 		done()
 		return
 
-
 	describe "Database Statements", ->
-
 		it "CREATE table (where all tests will be executed)", ( done ) =>
 			query = MSSQLClient.query( "
 					CREATE TABLE #{ TABLENAME } 
@@ -53,7 +51,6 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return	
 			return
-
 
 	describe "Error handling and syntax validation checks", ->
 		
@@ -267,7 +264,7 @@ describe "Test for node-mssql-connector", ->
 				( res.rowcount ).should.equal( 0 )
 				done()
 				return
-	
+
 
 	describe "Speed tests", ->
 
@@ -276,23 +273,31 @@ describe "Test for node-mssql-connector", ->
 			query = MSSQLClient.query( "
 				SELECT TOP 1 ID 
 				FROM #{ TABLENAME }  
-				WHERE id = @id
-			" )
-			query.param( "id", "Int",  idx )
-			query.exec cb
+			" )			
+			query.exec (err, resp)->
+				if err
+					cb( err )
+					return
+
+				if resp.rowcount is 1
+					cb(null, "Row: #{ idx }")
+				else
+					cb( true, 'No recorcd error')
+
+				return
 			return
 		
-		it "Seriel from ID 80 - 327", ( done )=>
-			async.mapSeries [80....327], _queryFunc, ( err, resp ) ->
+		it "Seriel from ID (500 records)", ( done )=>
+			async.mapSeries [1..500], _queryFunc, ( err, resp ) ->
+				should.not.exist( err )
 				done()
 				return
 
-		
-		it "Parallel from ID 80 - 327", ( done )=>			
-			async.map [80....327], _queryFunc, ( err, resp ) ->
+		it "Parallel from ID (500 records)", ( done )=>			
+			async.map [1....500], _queryFunc, ( err, resp ) ->
+				should.not.exist( err )
 				done()
 				return
-
 		return
 
 

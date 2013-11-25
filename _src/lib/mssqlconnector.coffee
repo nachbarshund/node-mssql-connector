@@ -82,12 +82,15 @@ class MSSQLRequestBase extends require('./base')
 						@_handleError( cb, 'request-error', err )
 						return
 
+
 					returnobj = 
 						result: result
 						rowcount: rowCount
 
 					# Return the data
 					cb( null,  returnobj )
+
+					connection.close()
 					return
 
 				request.on 'row', (columns) =>
@@ -100,6 +103,10 @@ class MSSQLRequestBase extends require('./base')
 					obj = {}
 					obj[ _key ] = value
 					output.push( obj )
+					return
+
+				request.on 'done', ( key, value, options )->
+					console.log 'DONE', arguments
 					return
 				
 				@_setRequestParams request,  =>
@@ -388,6 +395,7 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 
 					# Return the data
 					cb( null,  returnobj )
+					connection.close()
 					return
 
 				request.on 'row', (columns) =>
@@ -400,8 +408,9 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 					obj 		= {}
 					obj[ _key ] 	= value
 					output.push( obj )
-					return
+					return				
 				
+
 				@_setRequestParams request,  =>
 					@_setOutputParams( connection, request )
 					return
@@ -500,8 +509,9 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api public
 	###
 	init: ( options = {} )=>
-		# Initialize the connection to server
-		@_initConnection()
+		if not @isinit 
+			# Initialize the connection to server
+			@_initConnection()
 		return
 
 
@@ -558,5 +568,6 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api private
 	###
 	_initConnection: =>
+		@isinit = true
 		@connectionpool = new ConnectionPool( @config.settings, @config.connection )
 		return

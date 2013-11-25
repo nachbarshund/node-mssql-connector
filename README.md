@@ -1,6 +1,5 @@
 
 # node-mssql-connector
-`Version 0.5`
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
 
@@ -101,7 +100,20 @@ The stored procedure in database looks like:
 
 ``` 
 ...
-ALTER PROCEDURE [dbo].[sp_demo] @ID Int,@Total Tinyint = 0 Output,@Teststring Varchar(100) = 'Default' OutputASSET @Teststring = "Modifed"SET @Total = 100SELECT ID, Name, LastnameFROM TableWHERE ID = @id
+ALTER PROCEDURE [dbo].[sp_demo] 
+
+@ID Int,
+@Total Tinyint = 0 Output,
+@Teststring Varchar(100) = 'Default' Output
+AS
+
+SET @Teststring = "Modifed"
+
+SET @Total = 100
+
+SELECT ID, Name, Lastname
+FROM Table
+WHERE ID = @id
 ```
 
 The difference to **SQL Statment** is that you have to call the `storedprod` method of **MSSQLClient**. If your stored procedure has output params (like in this example) then you must define this via `storedprod.outParam`
