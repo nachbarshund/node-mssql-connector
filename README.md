@@ -1,4 +1,3 @@
-
 # node-mssql-connector
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
@@ -123,7 +122,7 @@ storedprod = MSSQLClient.storedprod( "tedious_get2" )
 storedprod.param( "id", "Int",  23 )
 storedprod.outParam( "Total", "Int" )
 storedprod.outParam( "Teststring", "VarChar"" )
-storedprod.( function( err, res ){
+storedprod.exec( function( err, res ){
 	if( err ){
 		console.error( err );
 		return
