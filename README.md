@@ -127,7 +127,7 @@ storedprod = MSSQLClient.storedprod( "tedious_get2" )
 storedprod.param( "id", "Int",  23 )
 storedprod.outParam( "Total", "Int" )
 storedprod.outParam( "Teststring", "VarChar"" )
-storedprod.( function( err, res ){
+storedprod.exec( function( err, res ){
 	if( err ){
 		console.error( err );
 		return
