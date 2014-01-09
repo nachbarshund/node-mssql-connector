@@ -1,8 +1,10 @@
 # import required test modules
-should 			= 	require( "should" )
+should 			= 	require "should"
 async 			= 	require "async"
 
 MSSQLConnector 	= 	require( "../lib/mssqlconnector" )
+
+# Here must be set the connection settings
 MSSQLClient 		=  	new MSSQLConnector
 					settings:
 						max: 20
@@ -14,7 +16,21 @@ MSSQLClient 		=  	new MSSQLConnector
 						server: ""
 						options: 
 							database: ""
-						
+
+
+# This must be empty to check wrong connection
+MSSQLClientFalseCon  =  	new MSSQLConnector
+					settings:
+						max: 20
+						min: 0
+						idleTimeoutMillis: 30000
+					connection:
+						userName: ""
+						password: ""
+						server: ""
+						options: 
+							database: ""	
+
 
 TESTVARIABLES 	= {}
 
@@ -35,7 +51,8 @@ describe "Test for node-mssql-connector", ->
 		done()
 		return
 
-	describe "Database Statements", ->
+
+	describe "DATABASE start", ->
 		it "CREATE table (where all tests will be executed)", ( done ) =>
 			query = MSSQLClient.query( "
 					CREATE TABLE #{ TABLENAME } 
@@ -52,23 +69,78 @@ describe "Test for node-mssql-connector", ->
 				return	
 			return
 
-	describe "Error handling and syntax validation checks", ->
-		
-		it "Error on empty statement", ( done )->
-			query = MSSQLClient.query( "" )
-			query.should.not.be.ok
-			done()
+
+	describe "Error handling, Connection check and syntax validation check", ->
+
+		it "Try to create same table again (Except: error)", ( done ) =>
+			query = MSSQLClient.query( "
+					CREATE TABLE #{ TABLENAME } 
+					(
+						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
+						Name varchar( 250 ) default '',
+						jahrgang int,
+						Created smalldatetime default getDate()
+					)
+			" )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return	
 			return
 
-		it "Correct statement", ( done )->
+
+		it "Check incorrect connection (Except: error)", ( done ) ->
+			query = MSSQLClientFalseCon.query( "
+				SELECT    TOP 1  *
+				FROM       #{ TABLENAME } 
+			" )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
+
+
+		it "Throw error on empty statement", ( done ) ->
+			query = MSSQLClient.query( "" )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
+			return
+
+		
+		it "Set params with Invalid column name (Except: error)", ( done )->
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					wrongkey 
+				) 
+				VALUES( @name, @wrongkey )
+				SELECT @@IDENTITY AS 'id'
+			" )
+			query.param( "name", "VarChar",  "Chris" )
+			query.param( "wrongkey", "Int",  200 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
+			return		
+
+
+		it "Set more params then variables in query (Except: error)", ( done ) ->
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME } 
 				WHERE id = @id
 			" )
-			query.should.be.ok
-			done()
+			query.param( "id", "Int",  100 )
+			query.param( "id", "Int",  200 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
 			return
+
 
 		it "Set params two params on the same field name (Except: error)", ( done ) ->
 			query = MSSQLClient.query( "
@@ -76,11 +148,12 @@ describe "Test for node-mssql-connector", ->
 				FROM #{ TABLENAME } 
 				WHERE id = @id
 			" )
-			( () ->
-				query.param( "id", "Int",  100 )
-				query.param( "id", "Int",  200 )
-			).should.throw()
-			done()
+			query.param( "id", "Int",  100 )
+			query.param( "id", "Int",  200 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
 			return
 
 
@@ -90,13 +163,14 @@ describe "Test for node-mssql-connector", ->
 				FROM #{ TABLENAME } 
 				WHERE id = @id
 			" )
-			
-			( () ->
-				query.param( "id", "Int",  200 )
-				query.param( 'name', "Int",  100 )
-			).should.throw()
-			done()
+			query.param( "id", "Int",  200 )
+			query.param( 'name', "Int",  100 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
 			return
+
 
 		it "Insert new item with wrong datatype", ( done ) ->
 			query = MSSQLClient.query( "
@@ -109,20 +183,38 @@ describe "Test for node-mssql-connector", ->
 					@jahrgang 
 				)
 			'" )
-			( () ->
-				query.param( "name", "VarChar",  "User Name" )
-				query.param( "jahrgang", "wrongdatatype",  1986 )
-			).should.throw()
-			done()
+			query.param( "name", "VarChar",  "User Name" )
+			query.param( "jahrgang", "custominteger",  1986 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
 			return
 
-		it "Delete ID which is not in table", ( done )=>
-			query = MSSQLClient.query( " 
-				DELETE FROM #{ TABLENAME }  
+		it "Correct statement", ( done )->
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME } 
 				WHERE id = @id
 			" )
-			query.param( "id", "Int",  999999999 )
 			query.exec ( err, res ) ->
+				should.exist( err )
+				done()
+				return
+			return
+
+
+	describe "Syntax checks", ->
+		
+		it "Test SQL injection", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE name = @name
+			" )
+			query.param( "name", "VarChar",  "sakljasd' OR 1=1 or name='" )
+			query.exec ( err, res ) ->
+				res.should.have.keys( ["result", "rowcount"] )
 				( res.rowcount ).should.equal( 0 )
 				done()
 				return
@@ -142,6 +234,8 @@ describe "Test for node-mssql-connector", ->
 			query.param( "name", "VarChar",  "Username" )
 			query.param( "jahrgang", "Int",  23 )
 			query.exec ( err, res ) ->
+				should.not.exist( err )
+				
 				res.should.have.keys( ['result', 'rowcount'] )
 				( res.rowcount ).should.equal( 2 )
 				
@@ -151,7 +245,7 @@ describe "Test for node-mssql-connector", ->
 
 				# Save this for next check
 				TESTVARIABLES.insertnewid = result[ 0 ].id
-				
+
 				done()
 				return				
 			return
@@ -167,7 +261,8 @@ describe "Test for node-mssql-connector", ->
 			query.param( "name", "VarChar",  "Hänschen Müller" )
 			query.param( "jahrgang", "Int",  1986 )
 			query.exec ( err, res ) ->
-				
+				should.not.exist( err )
+
 				TESTVARIABLES.updatedID = res.result[ 0 ].id
 
 				query = MSSQLClient.query( "
@@ -178,6 +273,8 @@ describe "Test for node-mssql-connector", ->
 				query.param( "id", "Int",   TESTVARIABLES.updatedID )
 				query.param( "name", "VarChar",  "UpdatedName" )
 				query.exec ( err, res ) ->
+					should.not.exist( err )
+
 					res.should.have.keys( ['result', 'rowcount'] )
 					( res.rowcount ).should.equal( 1 )
 
@@ -188,8 +285,9 @@ describe "Test for node-mssql-connector", ->
 					return
 				return
 
-
+	
 	describe "SELECT statements", ->
+
 
 		it "Get latest inserted ID", ( done )=>
 			query = MSSQLClient.query( "
@@ -199,7 +297,7 @@ describe "Test for node-mssql-connector", ->
 			" )
 			query.param( "id", "Int",  TESTVARIABLES.insertnewid )
 			query.exec ( err, res ) ->
-				
+				should.not.exist( err )
 				res.should.have.keys( ["result", "rowcount"] )
 				( res.rowcount ).should.equal( 1 )
 
@@ -221,6 +319,7 @@ describe "Test for node-mssql-connector", ->
 			" )
 			query.param( "id", "Int",  TESTVARIABLES.updatedID )
 			query.exec ( err, res ) ->
+				should.not.exist( err )
 				res.should.have.keys( ["result", "rowcount"] )
 				( res.rowcount ).should.equal( 1 )
 
@@ -234,8 +333,7 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 
-		
-		
+				
 		it "Select with LIKE statement", ( done )=>
 			query = MSSQLClient.query( "
 				SELECT     *
@@ -244,27 +342,43 @@ describe "Test for node-mssql-connector", ->
 			" )
 			query.param( "Update", "VarChar",  "%Name%" )
 			query.exec ( err, res ) ->
+				should.not.exist( err )
 				res.should.have.keys( ["result", "rowcount"] )
 				
 				done()
 				return
 	
+	
+	describe "DELETE statements", ->
 
-	describe "Syntax checks", ->
-		
-		it "Test SQL injection", ( done )=>
-			query = MSSQLClient.query( "
-				SELECT * 
-				FROM #{ TABLENAME }  
-				WHERE name = @name
+
+		it "Delete ID which is not in table", ( done )=>
+			query = MSSQLClient.query( " 
+				DELETE FROM #{ TABLENAME }  
+				WHERE id = @id
 			" )
-			query.param( "name", "VarChar",  "sakljasd' OR 1=1 or name='" )
+			query.param( "id", "Int",  999999999 )
 			query.exec ( err, res ) ->
-				res.should.have.keys( ["result", "rowcount"] )
+				should.not.exist( err )
 				( res.rowcount ).should.equal( 0 )
 				done()
 				return
 
+
+		it "Delete latest inserted ID", ( done )=>
+			query = MSSQLClient.query( "
+				DELETE FROM #{ TABLENAME }  
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  TESTVARIABLES.insertnewid )
+			query.exec ( err, res ) ->		
+				should.not.exist( err )		
+				( res.rowcount ).should.equal( 1 )
+				result = res.result
+				result.should.be.an.instanceOf( Array )
+				done()
+				return
+	
 
 	describe "Speed tests", ->
 
@@ -283,7 +397,6 @@ describe "Test for node-mssql-connector", ->
 					cb(null, "Row: #{ idx }")
 				else
 					cb( true, 'No recorcd error')
-
 				return
 			return
 		
@@ -301,20 +414,7 @@ describe "Test for node-mssql-connector", ->
 		return
 
 
-	describe "DELETE statements", ->
-		
-		it "Delete latest inserted ID", ( done )=>
-			query = MSSQLClient.query( "
-				DELETE FROM #{ TABLENAME }  
-				WHERE id = @id
-			" )
-			query.param( "id", "Int",  TESTVARIABLES.insertnewid )
-			query.exec ( err, res ) ->				
-				( res.rowcount ).should.equal( 1 )
-				result = res.result
-				result.should.be.an.instanceOf( Array )
-				done()
-				return
+	describe "DATABASE end", ->
 		
 		it "Delete the created table", ( done ) =>
 

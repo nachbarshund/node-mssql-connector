@@ -48,29 +48,29 @@ module.exports = class Base
 	
 	Baisc error handler. It creates a true error object and returns it to the callback, logs it or throws the error hard
 	
-	@param { Function|String } cb Callback function or NAme to send it to the logger as error 
+	@param { Function|String } cb Callback function or name to send it to the logger as error 
 	@param { String|Error|Object } err Error type, Obejct or real error object
 	
 	@api private
 	###
-	_handleError: ( cb, err, data = {} )=>
+	_handleError: ( cb, err, detail = null )=>
+
 		# try to create a error Object with humanized message
 		if _.isString( err )
-			_err = new Error()
+			_err = {}
 			_err.name = err
-			_err.message = data or "unkown"
-			_err.customError = true
+			_err.message = detail if detail
 		else 
 			_err = err
 
+		# Set always first error which is given
+		@_error = _err if not @_error
+
+		# If callback method is given run this
 		if _.isFunction( cb )
 			cb( _err )
+			return
 
-		else if _.isString( cb )
-			console.error "error", cb, _err
-
-		else
-			throw _err
 		return
 
 	

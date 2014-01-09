@@ -5,7 +5,7 @@ DataTypes 		= require('tedious').TYPES
 Request 		= require('tedious').Request
 
 
-class MSSQLRequestBase extends require('./base')
+class MSSQLRequestBase extends require( './base' )
 
 	constructor: ( @statement, parent ) ->
 		super
@@ -13,7 +13,8 @@ class MSSQLRequestBase extends require('./base')
 		# Set the defaults
 		@_params 		= {}
 		@_outparams 		= {}
-		@_fields 		= []	
+		@_fields 		= []
+		@_error		= null
 
 		# Get data from paren
 		@config 		= parent.config
@@ -57,8 +58,22 @@ class MSSQLRequestBase extends require('./base')
 	@api public
 	###
 	exec: ( cb ) =>	
-		if not @_checkParams()
+		# Check if there is any error bevore then return this
+		if @_error
+			@_handleError( cb, @_error )
 			return
+
+		if not @_checkParams()
+			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters' )
+			return
+
+		# Check if statement is given
+		else if not @statement?.length
+			@_handleError( cb, 'no-statement-given', 'The statement of query is missing.' )
+			return
+
+		# Reset the error 
+		@_error = null
 
 
 		@connectionpool.requestConnection ( err, connection ) =>
@@ -80,7 +95,6 @@ class MSSQLRequestBase extends require('./base')
 					if err
 						@_handleError( cb, 'request-error', err )
 						return
-
 
 					returnobj = 
 						result: result
@@ -129,20 +143,25 @@ class MSSQLRequestBase extends require('./base')
 	@api public
 	###
 	param:  ( field, datatype, value ) =>
-		# Check if field is valid
 
+		# Check if there is any error before. Then stop.
+		if @_error
+			return @
+
+		# Check if field is valid
 		if not @_checkField( field, datatype )
-			@_handleError( null, 'param-not-found' )
-			return
+			@_handleError( null, 'param-not-found', "Param '#{ field }' was not found in query or is tried to set twice" )
+			return @
 
 		if not @_checkDataType( datatype )
-			@_handleError( null, 'invalid-datatype' )
-			return
+			@_handleError( null, 'invalid-datatype', "Given datatype (#{ datatype }) for field '#{ field }' is not correct" )
+			return @
 		
 		# If everything correct set param to global
 		@_params[ field ] = 
 			type: @_getDataType( datatype )
 			value: if value? then value else null
+
 		return @
 	
 
@@ -220,7 +239,7 @@ class MSSQLRequestBase extends require('./base')
 		paramkeys = _.keys( @_params )
 
 		if paramkeys?.length isnt @_fields?.length
-			@_handleError( null, 'param-field-length' )
+			@_handleError( null, 'param-field-length', 'The length of given params is different to set parameters' )
 			return false
 
 		# Check if there are all files set
@@ -250,6 +269,7 @@ class MSSQLRequestBase extends require('./base')
 		if not @_checkDataType( datatype )
 			@_handleError( null, 'invalid-datatype' )
 			return
+
 		return DataTypes[ datatype ]
 
 
@@ -300,7 +320,8 @@ class MSSQLRequestBase extends require('./base')
 		if _.isFunction( cb )
 			cb()		
 			return
-		@_handleError( null, 'no-exec-callback' )
+
+		@_handleError( null, 'no-exec-callback', 'There is no exec callback given' )
 		return
 
 
@@ -361,7 +382,13 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 	@api public
 	###
 	exec: ( cb ) =>	
+		# Check if there is any error bevore then return this
+		if @_error
+			@_handleError( cb, @_error )
+			return
+
 		if not @_checkParams()
+			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters' )
 			return
 
 		@connectionpool.requestConnection ( err, connection ) =>
@@ -461,7 +488,11 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 	
 	@api public
 	###
-	param:  ( field, datatype, value ) =>		
+	param:  ( field, datatype, value ) =>
+		# Check if there is any error before. Then stop.
+		if @_error
+			return @	
+			
 		# If everything correct set param to global
 		@_params[ field ] = 
 			type: @_getDataType( datatype )
@@ -529,8 +560,8 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api public
 	###
 	query: ( statement, options = {} )=>
-		if not statement?.length
-			return false
+		#if not statement?.length
+		#	return false
 
 		@init( options )
 		return new MSSQLRequestBase( statement, @ )

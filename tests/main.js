@@ -1,5 +1,5 @@
 (function() {
-  var MSSQLClient, MSSQLConnector, TABLENAME, TESTVARIABLES, async, should;
+  var MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, TABLENAME, TESTVARIABLES, async, should;
 
   should = require("should");
 
@@ -8,6 +8,22 @@
   MSSQLConnector = require("../lib/mssqlconnector");
 
   MSSQLClient = new MSSQLConnector({
+    settings: {
+      max: 20,
+      min: 0,
+      idleTimeoutMillis: 30000
+    },
+    connection: {
+      userName: "",
+      password: "",
+      server: "",
+      options: {
+        database: ""
+      }
+    }
+  });
+
+  MSSQLClientFalseCon = new MSSQLConnector({
     settings: {
       max: 20,
       min: 0,
@@ -35,7 +51,7 @@
     after(function(done) {
       done();
     });
-    describe("Database Statements", function() {
+    describe("DATABASE start", function() {
       var _this = this;
       return it("CREATE table (where all tests will be executed)", function(done) {
         var query;
@@ -46,52 +62,99 @@
         });
       });
     });
-    describe("Error handling and syntax validation checks", function() {
+    describe("Error handling, Connection check and syntax validation check", function() {
       var _this = this;
-      it("Error on empty statement", function(done) {
+      it("Try to create same table again (Except: error)", function(done) {
+        var query;
+        query = MSSQLClient.query("					CREATE TABLE " + TABLENAME + " 					(						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),						Name varchar( 250 ) default '',						jahrgang int,						Created smalldatetime default getDate()					)			");
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
+      });
+      it("Check incorrect connection (Except: error)", function(done) {
+        var query;
+        query = MSSQLClientFalseCon.query("				SELECT    TOP 1  *				FROM       " + TABLENAME + " 			");
+        return query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
+      });
+      it("Throw error on empty statement", function(done) {
         var query;
         query = MSSQLClient.query("");
-        query.should.not.be.ok;
-        done();
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
       });
-      it("Correct statement", function(done) {
+      it("Set params with Invalid column name (Except: error)", function(done) {
+        var query;
+        query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					wrongkey 				) 				VALUES( @name, @wrongkey )				SELECT @@IDENTITY AS 'id'			");
+        query.param("name", "VarChar", "Chris");
+        query.param("wrongkey", "Int", 200);
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
+      });
+      it("Set more params then variables in query (Except: error)", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
-        query.should.be.ok;
-        done();
+        query.param("id", "Int", 100);
+        query.param("id", "Int", 200);
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
       });
       it("Set params two params on the same field name (Except: error)", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
-        (function() {
-          query.param("id", "Int", 100);
-          return query.param("id", "Int", 200);
-        }).should["throw"]();
-        done();
+        query.param("id", "Int", 100);
+        query.param("id", "Int", 200);
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
       });
       it("Set params which are not in statement", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
-        (function() {
-          query.param("id", "Int", 200);
-          return query.param('name', "Int", 100);
-        }).should["throw"]();
-        done();
+        query.param("id", "Int", 200);
+        query.param('name', "Int", 100);
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
       });
       it("Insert new item with wrong datatype", function(done) {
         var query;
         query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					Jahrgang 				) 				VALUES( 					@name, 					@jahrgang 				)			'");
-        (function() {
-          query.param("name", "VarChar", "User Name");
-          return query.param("jahrgang", "wrongdatatype", 1986);
-        }).should["throw"]();
-        done();
+        query.param("name", "VarChar", "User Name");
+        query.param("jahrgang", "custominteger", 1986);
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
       });
-      return it("Delete ID which is not in table", function(done) {
+      return it("Correct statement", function(done) {
         var query;
-        query = MSSQLClient.query(" 				DELETE FROM " + TABLENAME + "  				WHERE id = @id			");
-        query.param("id", "Int", 999999999);
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
+        query.exec(function(err, res) {
+          should.exist(err);
+          done();
+        });
+      });
+    });
+    describe("Syntax checks", function() {
+      var _this = this;
+      return it("Test SQL injection", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE name = @name			");
+        query.param("name", "VarChar", "sakljasd' OR 1=1 or name='");
         return query.exec(function(err, res) {
+          res.should.have.keys(["result", "rowcount"]);
           res.rowcount.should.equal(0);
           done();
         });
@@ -106,6 +169,7 @@
         query.param("jahrgang", "Int", 23);
         query.exec(function(err, res) {
           var result;
+          should.not.exist(err);
           res.should.have.keys(['result', 'rowcount']);
           res.rowcount.should.equal(2);
           result = res.result;
@@ -124,12 +188,14 @@
         query.param("name", "VarChar", "Hänschen Müller");
         query.param("jahrgang", "Int", 1986);
         return query.exec(function(err, res) {
+          should.not.exist(err);
           TESTVARIABLES.updatedID = res.result[0].id;
           query = MSSQLClient.query("					UPDATE " + TABLENAME + "  					SET Name = @name 					WHERE ID = @id				");
           query.param("id", "Int", TESTVARIABLES.updatedID);
           query.param("name", "VarChar", "UpdatedName");
           query.exec(function(err, res) {
             var result;
+            should.not.exist(err);
             res.should.have.keys(['result', 'rowcount']);
             res.rowcount.should.equal(1);
             result = res.result;
@@ -147,6 +213,7 @@
         query.param("id", "Int", TESTVARIABLES.insertnewid);
         return query.exec(function(err, res) {
           var model, result;
+          should.not.exist(err);
           res.should.have.keys(["result", "rowcount"]);
           res.rowcount.should.equal(1);
           result = res.result;
@@ -162,6 +229,7 @@
         query.param("id", "Int", TESTVARIABLES.updatedID);
         return query.exec(function(err, res) {
           var model, result;
+          should.not.exist(err);
           res.should.have.keys(["result", "rowcount"]);
           res.rowcount.should.equal(1);
           result = res.result;
@@ -177,20 +245,34 @@
         query = MSSQLClient.query("				SELECT     *				FROM       " + TABLENAME + " 				WHERE     Name LIKE @Update			");
         query.param("Update", "VarChar", "%Name%");
         return query.exec(function(err, res) {
+          should.not.exist(err);
           res.should.have.keys(["result", "rowcount"]);
           done();
         });
       });
     });
-    describe("Syntax checks", function() {
+    describe("DELETE statements", function() {
       var _this = this;
-      return it("Test SQL injection", function(done) {
+      it("Delete ID which is not in table", function(done) {
         var query;
-        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE name = @name			");
-        query.param("name", "VarChar", "sakljasd' OR 1=1 or name='");
+        query = MSSQLClient.query(" 				DELETE FROM " + TABLENAME + "  				WHERE id = @id			");
+        query.param("id", "Int", 999999999);
         return query.exec(function(err, res) {
-          res.should.have.keys(["result", "rowcount"]);
+          should.not.exist(err);
           res.rowcount.should.equal(0);
+          done();
+        });
+      });
+      return it("Delete latest inserted ID", function(done) {
+        var query;
+        query = MSSQLClient.query("				DELETE FROM " + TABLENAME + "  				WHERE id = @id			");
+        query.param("id", "Int", TESTVARIABLES.insertnewid);
+        return query.exec(function(err, res) {
+          var result;
+          should.not.exist(err);
+          res.rowcount.should.equal(1);
+          result = res.result;
+          result.should.be.an.instanceOf(Array);
           done();
         });
       });
@@ -237,20 +319,8 @@
         });
       });
     });
-    return describe("DELETE statements", function() {
+    return describe("DATABASE end", function() {
       var _this = this;
-      it("Delete latest inserted ID", function(done) {
-        var query;
-        query = MSSQLClient.query("				DELETE FROM " + TABLENAME + "  				WHERE id = @id			");
-        query.param("id", "Int", TESTVARIABLES.insertnewid);
-        return query.exec(function(err, res) {
-          var result;
-          res.rowcount.should.equal(1);
-          result = res.result;
-          result.should.be.an.instanceOf(Array);
-          done();
-        });
-      });
       it("Delete the created table", function(done) {
         var query;
         query = MSSQLClient.query("				DROP TABLE Dbo." + TABLENAME + " 			");

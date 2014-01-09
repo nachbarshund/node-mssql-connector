@@ -1,9 +1,12 @@
-
 # node-mssql-connector
+
+CurrentVersion: `0.2.0`
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
 
 The plugin is written in CoffeeScript.
+
+Take a lot of changes in [Changelog](#changelog)
 
 # Basics
 - Supports all simple SQL- Statements like `UPDATE`, `DELETE`, `SELECT` etc.
@@ -11,6 +14,7 @@ The plugin is written in CoffeeScript.
 - *Stored procedures* can be executed
 - Get the data in JSON format
 - Run the test to check that everything is correct
+
 
 # Installation
 
@@ -158,7 +162,40 @@ storedprod.( function( err, res ){
 
 ```
   
+# <a name="changelog"></a>Changelog
 
+`v0.2.0`
+
+- Change the complete error handling. Errors will now always be returned as an object in the callback method:
+	
+	```
+	// Example of an error whcih happens when there will be more params set than in query 
+	query = MSSQLClient.query( "
+			SELECT * 
+			FROM Table
+			WHERE id = @id
+	" )
+	query.param( "id", "Int",  100 )
+	query.param( "otherfield", "Int",  200 )
+	query.exec( function( err, res ){
+		console.log( err );
+		
+		/*
+			Result
+						
+			{ 
+				name: 'param-not-found',
+  				message: 'Param 'otherfield' was not found in query or is tried to set twice' 
+  			}	
+  				
+		*/
+	});
+	```
+	This is already implemented into the tests.
+
+`v0.1.2`
+
+- Implement connection pool.
 
 # Not implemented yet
 - Test for inserting stored procedures
@@ -168,7 +205,7 @@ storedprod.( function( err, res ){
 
 # The MIT License (MIT)
 
-Copyright © 2013 Christopher Zotter, http://www.tcs.de
+Copyright © 2014 Christopher Zotter, http://www.tcs.de
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
