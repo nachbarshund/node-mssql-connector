@@ -240,10 +240,20 @@
           done();
         });
       });
-      return it("Select with LIKE statement", function(done) {
+      it("Select with LIKE statement", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT     *				FROM       " + TABLENAME + " 				WHERE     Name LIKE @Update			");
         query.param("Update", "VarChar", "%Name%");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.should.have.keys(["result", "rowcount"]);
+          done();
+        });
+      });
+      return it("Select with IN statement (ids)", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT     *				FROM       " + TABLENAME + " 				WHERE     ID IN (@idlist)			");
+        query.param("idlist", "Int", [1, 2, 3]);
         return query.exec(function(err, res) {
           should.not.exist(err);
           res.should.have.keys(["result", "rowcount"]);

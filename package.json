@@ -1,11 +1,11 @@
 {
     "name": "node-mssql-connector",
     "description": "A simple connect and execute plugins for MSSQL querys on nodejs.",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "author": "Christopher Zotter <nachbarshund+npm@gmail.com>",
     "main": "./lib/mssqlconnector.js",
     "engines": {
-		"node": "> 0.8.10"
+		"node": "> 0.10.25"
 	},
 	"dependencies": {
 		"tedious": "0.1.5",

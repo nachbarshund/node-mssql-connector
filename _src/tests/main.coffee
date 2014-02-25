@@ -347,6 +347,19 @@ describe "Test for node-mssql-connector", ->
 				
 				done()
 				return
+
+		it "Select with IN statement (ids)", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT     *
+				FROM       #{ TABLENAME } 
+				WHERE     ID IN (@idlist)
+			" )
+			query.param( "idlist", "Int",  [1,2,3] )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				res.should.have.keys( ["result", "rowcount"] )
+				done()
+				return
 	
 	
 	describe "DELETE statements", ->

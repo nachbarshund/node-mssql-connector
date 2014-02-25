@@ -1,6 +1,6 @@
 # node-mssql-connector
 
-CurrentVersion: `0.2.0`
+CurrentVersion: `0.2.1`
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
 
@@ -68,6 +68,7 @@ If there aren't any parameter you do not need the following line.
 query.param( "id", "Int",  23 )
 ```
 
+
 Execute the query. The result will be returned as an `Array` with an `Object` for each result.
 
 
@@ -97,6 +98,19 @@ query.exec( function( err, res ){
 	
 })
 ```
+
+Since `v0.2.1`:
+You can also add a list of (Array) parameters into one param statement, e.g.
+
+	query = MSSQLClient.query( "
+		SELECT ID, Name, Lastname
+		FROM Table
+		WHERE id IN (@idlist)
+	")
+
+	query.param( "idlist", "Int",  [23,34,67] )
+
+Check that every parameter in this array has the given type.
 
 ## Stored procedure
 
@@ -163,6 +177,11 @@ storedprod.exec( function( err, res ){
 ```
   
 # <a name="changelog"></a>Changelog
+`v0.2.1`
+
+- Add IN statement in one param. 
+- Run on nodejs v0.10.25
+
 
 `v0.2.0`
 

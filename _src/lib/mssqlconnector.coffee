@@ -91,6 +91,7 @@ class MSSQLRequestBase extends require( './base' )
 				result 	= []
 				output 	= []
 
+
 				request = new Request @statement, (err, rowCount) =>
 					if err
 						@_handleError( cb, 'request-error', err )
@@ -118,9 +119,6 @@ class MSSQLRequestBase extends require( './base' )
 					output.push( obj )
 					return
 
-				request.on 'done', ( key, value, options )->
-					console.log 'DONE', arguments
-					return
 				
 				@_setRequestParams request,  =>
 					connection.execSql( request )
@@ -148,6 +146,12 @@ class MSSQLRequestBase extends require( './base' )
 		if @_error
 			return @
 
+		# If its is an array then add IN statement
+		if _.isArray( value )
+			@_addINStatement( field, datatype, value )
+			return
+
+
 		# Check if field is valid
 		if not @_checkField( field, datatype )
 			@_handleError( null, 'param-not-found', "Param '#{ field }' was not found in query or is tried to set twice" )
@@ -157,6 +161,7 @@ class MSSQLRequestBase extends require( './base' )
 			@_handleError( null, 'invalid-datatype', "Given datatype (#{ datatype }) for field '#{ field }' is not correct" )
 			return @
 		
+
 		# If everything correct set param to global
 		@_params[ field ] = 
 			type: @_getDataType( datatype )
@@ -164,6 +169,7 @@ class MSSQLRequestBase extends require( './base' )
 
 		return @
 	
+
 
 	###
 	## outParam
@@ -184,6 +190,41 @@ class MSSQLRequestBase extends require( './base' )
 			type: @_getDataType( datatype )
 		return @
 
+	###
+	## _addINStatement
+	
+	`mssqlconnector._addINStatement( id, cb )`
+	
+	Run over every param in array and create a new statement. After this insert param into new statement.
+	
+	@param { String } field Fieldname in database 
+	@param { String } datatype Datatype of field
+	@param { String } value Value to set
+	
+	@api private
+	###
+	_addINStatement: ( field, datatype, value ) =>
+		statement = ''
+
+		# 1. First get all new fields
+		for _param, idx in value
+			if idx
+				statement += ','
+			statement += "@#{ field }#{ idx }"
+
+
+		# 2. Replace the statement with new fields
+		@statement = @statement.replace( "@#{ field }", statement )
+		
+		# 3. Reset all params
+		@_setParams()
+
+		# 4. Set new params
+		for _param, idx in value
+			@param(  "#{ field }#{ idx }", datatype, _param )
+
+		return
+		
 
 	###
 	## _checkDataType
@@ -248,6 +289,7 @@ class MSSQLRequestBase extends require( './base' )
 				@_handleError( null, 'missing-field' )
 				break
 				return false
+
 		return true
 
 
@@ -283,6 +325,9 @@ class MSSQLRequestBase extends require( './base' )
 	@api private
 	###
 	_setParams: =>
+		# Set empty
+		@_fields = []
+
 		_regex = /[@]+[A-Za-z0-9]+/g
 
 		# All params with leading @
