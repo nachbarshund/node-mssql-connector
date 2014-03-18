@@ -177,6 +177,27 @@ storedprod.exec( function( err, res ){
 ```
   
 # <a name="changelog"></a>Changelog
+`v0.2.2`
+
+- Remove unused test for length of given params. This allows using variables in the query statement, e.g.
+	
+	```
+	DECLARE @sorting int  		
+	SET @sorting = 1
+	...
+	```
+- Allow setting variables with underscore, e.g.
+
+	```
+	query = MSSQLClient.query( "
+			SELECT * 
+			FROM Table
+			WHERE id = @last_id
+	" )
+	query.param( "last_id", "Int",  23 )
+	...
+	```
+	
 `v0.2.1`
 
 - Add IN statement in one param. 
