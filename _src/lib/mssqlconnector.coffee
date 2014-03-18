@@ -279,9 +279,6 @@ class MSSQLRequestBase extends require( './base' )
 
 		paramkeys = _.keys( @_params )
 
-		if paramkeys?.length isnt @_fields?.length
-			@_handleError( null, 'param-field-length', 'The length of given params is different to set parameters' )
-			return false
 
 		# Check if there are all files set
 		for _field in @_fields
