@@ -127,21 +127,6 @@ describe "Test for node-mssql-connector", ->
 			return		
 
 
-		it "Set more params then variables in query (Except: error)", ( done ) ->
-			query = MSSQLClient.query( "
-				SELECT * 
-				FROM #{ TABLENAME } 
-				WHERE id = @id
-			" )
-			query.param( "id", "Int",  100 )
-			query.param( "id", "Int",  200 )
-			query.exec ( err, res ) ->
-				should.exist( err )
-				done()
-				return
-			return
-
-
 		it "Set params two params on the same field name (Except: error)", ( done ) ->
 			query = MSSQLClient.query( "
 				SELECT * 
@@ -287,6 +272,50 @@ describe "Test for node-mssql-connector", ->
 
 	
 	describe "SELECT statements", ->
+
+		it "Set internal variable in statement", ( done )=>
+			query = MSSQLClient.query( "
+				DECLARE @lastid int
+
+				SET @lastid = #{ TESTVARIABLES.insertnewid }
+
+				SELECT ID
+				FROM #{ TABLENAME }  
+				WHERE ID = @lastid
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				res.should.have.keys( ["result", "rowcount"] )
+				
+				result = res.result
+				result.should.be.an.instanceOf( Array )
+
+				model = result[ 0 ]
+				model.should.have.keys( ["id"])
+				
+				done()
+				return
+
+		it "Select with underscore(_) variables", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE ID = @last_id
+			" )
+			query.param( "last_id", "Int",  TESTVARIABLES.insertnewid )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 1 )
+
+				result = res.result
+				result.should.be.an.instanceOf( Array )
+
+				model = result[ 0 ]
+				model.should.have.keys( ["id", "name", "jahrgang", "created"] )
+				
+				done()
+				return
 
 
 		it "Get latest inserted ID", ( done )=>

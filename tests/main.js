@@ -98,16 +98,6 @@
           done();
         });
       });
-      it("Set more params then variables in query (Except: error)", function(done) {
-        var query;
-        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
-        query.param("id", "Int", 100);
-        query.param("id", "Int", 200);
-        query.exec(function(err, res) {
-          should.exist(err);
-          done();
-        });
-      });
       it("Set params two params on the same field name (Except: error)", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
@@ -207,6 +197,36 @@
     });
     describe("SELECT statements", function() {
       var _this = this;
+      it("Set internal variable in statement", function(done) {
+        var query;
+        query = MSSQLClient.query("				DECLARE @lastid int				SET @lastid = " + TESTVARIABLES.insertnewid + "				SELECT ID				FROM " + TABLENAME + "  				WHERE ID = @lastid			");
+        return query.exec(function(err, res) {
+          var model, result;
+          should.not.exist(err);
+          res.should.have.keys(["result", "rowcount"]);
+          result = res.result;
+          result.should.be.an.instanceOf(Array);
+          model = result[0];
+          model.should.have.keys(["id"]);
+          done();
+        });
+      });
+      it("Select with underscore(_) variables", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE ID = @last_id			");
+        query.param("last_id", "Int", TESTVARIABLES.insertnewid);
+        return query.exec(function(err, res) {
+          var model, result;
+          should.not.exist(err);
+          res.should.have.keys(["result", "rowcount"]);
+          res.rowcount.should.equal(1);
+          result = res.result;
+          result.should.be.an.instanceOf(Array);
+          model = result[0];
+          model.should.have.keys(["id", "name", "jahrgang", "created"]);
+          done();
+        });
+      });
       it("Get latest inserted ID", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE id = @id			");
