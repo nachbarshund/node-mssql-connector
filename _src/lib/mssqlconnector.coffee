@@ -325,7 +325,7 @@ class MSSQLRequestBase extends require( './base' )
 		# Set empty
 		@_fields = []
 
-		_regex = /[@]+[A-Za-z0-9]+/g
+		_regex = /[@]+[A-Za-z0-9_]+/g
 
 		# All params with leading @
 		givenparams =  @statement.match( _regex )
