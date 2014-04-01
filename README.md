@@ -1,6 +1,6 @@
 # node-mssql-connector
 
-CurrentVersion: `0.2.1`
+CurrentVersion: `0.2.2`
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
 
