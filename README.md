@@ -177,6 +177,9 @@ storedprod.exec( function( err, res ){
 ```
   
 # <a name="changelog"></a>Changelog
+`v0.2.3`
+- Set correct versions in np modules (package.json)
+
 `v0.2.2`
 
 - Remove unused test for length of given params. This allows using variables in the query statement, e.g.

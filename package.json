@@ -1,7 +1,7 @@
 {
     "name": "node-mssql-connector",
     "description": "A simple connect and execute plugins for MSSQL querys on nodejs.",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "author": "Christopher Zotter <nachbarshund+npm@gmail.com>",
     "main": "./lib/mssqlconnector.js",
     "engines": {
@@ -9,13 +9,13 @@
 	},
 	"dependencies": {
 		"tedious": "0.1.5",
-		"lodash": "*",
-		"extend": "*",
+		"lodash": "2.4.x",
+		"extend": "1.2.x",
 		"tedious-connection-pool": "0.1.1"
 	},
 	"devDependencies": {
-		"should": "*",
-		"async": "*",
+		"should": "3.3.x",
+		"async": "0.7.x",
 		"grunt": "0.4.x",
 		"grunt-regarde": "*",
 		"grunt-contrib-coffee": "0.5.0",
