@@ -140,7 +140,7 @@ The difference to **SQL Statment** is that you have to call the `storedprod` met
 storedprod = MSSQLClient.storedprod( "tedious_get2" )
 storedprod.param( "id", "Int",  23 )
 storedprod.outParam( "Total", "Int" )
-storedprod.outParam( "Teststring", "VarChar"" )
+storedprod.outParam( "Teststring", "VarChar" )
 storedprod.exec( function( err, res ){
 	if( err ){
 		console.error( err );
