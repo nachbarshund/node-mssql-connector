@@ -307,6 +307,36 @@
         });
       });
     });
+    describe("TESTS for tedious v1.0.0", function() {
+      var _this = this;
+      it("Insert three datasets", function(done) {
+        var query;
+        query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )			");
+        query.param("name", "VarChar", "Testuser");
+        query.param("jahrgang", "Int", 28);
+        query.exec(function(err, res) {
+          should.not.exist(err);
+          query = MSSQLClient.query("					INSERT INTO " + TABLENAME + " ( 						Name, 						jahrgang 					) 					VALUES( @name, @jahrgang )				");
+          query.param("name", "VarChar", "Testuser");
+          query.param("jahrgang", "Int", 28);
+          query.exec(function(err, res) {
+            should.not.exist(err);
+            done();
+          });
+        });
+      });
+      return it("Select with multiple results", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT TOP 2 * 				FROM " + TABLENAME + "  				WHERE jahrgang = @jahrgang			");
+        query.param("jahrgang", "Int", 28);
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.rowcount.should.equal(2);
+          res.result.length.should.equal(2);
+          done();
+        });
+      });
+    });
     describe("Speed tests", function() {
       var _queryFunc,
         _this = this;

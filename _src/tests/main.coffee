@@ -420,7 +420,52 @@ describe "Test for node-mssql-connector", ->
 				result.should.be.an.instanceOf( Array )
 				done()
 				return
-	
+
+
+	describe "TESTS for tedious v1.0.0", ->
+
+		it "Insert three datasets", ( done )=>
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					jahrgang 
+				) 
+				VALUES( @name, @jahrgang )
+			" )
+			query.param( "name", "VarChar",  "Testuser" )
+			query.param( "jahrgang", "Int",  28 )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+
+				query = MSSQLClient.query( "
+					INSERT INTO #{ TABLENAME } ( 
+						Name, 
+						jahrgang 
+					) 
+					VALUES( @name, @jahrgang )
+				" )
+				query.param( "name", "VarChar",  "Testuser" )
+				query.param( "jahrgang", "Int",  28 )
+				query.exec ( err, res ) ->
+					should.not.exist( err )
+					done()
+					return	
+				return			
+			return
+
+		it "Select with multiple results", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT TOP 2 * 
+				FROM #{ TABLENAME }  
+				WHERE jahrgang = @jahrgang
+			" )
+			query.param( "jahrgang", "Int",  28 )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.rowcount ).should.equal( 2 )
+				( res.result.length ).should.equal( 2 )
+				done()
+				return
 
 	describe "Speed tests", ->
 
