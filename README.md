@@ -1,6 +1,6 @@
 # node-mssql-connector
 
-CurrentVersion: `0.2.4`
+CurrentVersion: `0.2.5`
 
 This is a NodeJS module to connect to MSSQL databases and executed queries or stored procedures. This plugin is based on [tedious by Mike D Pilsbury](http://pekim.github.io/tedious/index.html). 
 
@@ -177,6 +177,9 @@ storedprod.exec( function( err, res ){
 ```
   
 # <a name="changelog"></a>Changelog
+`v0.2.5`
+- Fix set param bug on stored procedures
+
 `v0.2.4`
 - Update tedious version vo 1.0.0 and add tests for this
 

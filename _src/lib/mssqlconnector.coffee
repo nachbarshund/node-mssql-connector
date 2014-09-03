@@ -538,7 +538,7 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 		# If everything correct set param to global
 		@_params[ field ] = 
 			type: @_getDataType( datatype )
-			value: value or null
+			value: if value? then value else null
 		return @
 
 
