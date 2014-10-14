@@ -11,7 +11,7 @@ Run queries or stored procedures. Based on [tedious by Mike D Pilsbury](http://p
 - Get the data in JSON format
 - Run the test to check that everything is correct
 
-CurrentVersion: `0.2.5`
+CurrentVersion: `0.2.6`
 
 ## Installation
 
