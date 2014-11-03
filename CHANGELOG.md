@@ -1,4 +1,8 @@
 # Changelog
+`v0.2.7`
+- Upgrade to tedious version `1.7.0`
+- Catch error in executing SQL, e.g. Values greater than integer max (2147483647)
+
 `v0.2.6`
 - Update docs and create changelog
 

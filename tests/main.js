@@ -152,7 +152,7 @@
     });
     describe("INSERT statements", function() {
       var _this = this;
-      return it("Insert new item", function(done) {
+      it("Insert new item", function(done) {
         var query;
         query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )				SELECT @@IDENTITY AS 'id'			");
         query.param("name", "VarChar", "Username");
@@ -166,6 +166,17 @@
           result.should.be.an.instanceOf(Array);
           result[0].should.have.keys(["id"]);
           TESTVARIABLES.insertnewid = result[0].id;
+          done();
+        });
+      });
+      return it("Insert with intege > 2147483647", function(done) {
+        var query;
+        query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )				SELECT @@IDENTITY AS 'id'			");
+        query.param("name", "VarChar", "IntegerCheck");
+        query.param("jahrgang", "Int", 2147483648);
+        query.exec(function(err, res) {
+          should.exist(err);
+          err.name.should.equal('request--params-error');
           done();
         });
       });

@@ -15,8 +15,7 @@ MSSQLClient 		=  	new MSSQLConnector
 						password: ""
 						server: ""
 						options: 
-							database: ""
-
+							database: ""	
 
 # This must be empty to check wrong connection
 MSSQLClientFalseCon  =  	new MSSQLConnector
@@ -50,7 +49,6 @@ describe "Test for node-mssql-connector", ->
 	after ( done )->
 		done()
 		return
-
 
 	describe "DATABASE start", ->
 		it "CREATE table (where all tests will be executed)", ( done ) =>
@@ -231,6 +229,24 @@ describe "Test for node-mssql-connector", ->
 				# Save this for next check
 				TESTVARIABLES.insertnewid = result[ 0 ].id
 
+				done()
+				return				
+			return
+
+		it "Insert with intege > 2147483647", ( done )=>
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					jahrgang 
+				) 
+				VALUES( @name, @jahrgang )
+				SELECT @@IDENTITY AS 'id'
+			" )
+			query.param( "name", "VarChar",  "IntegerCheck" )
+			query.param( "jahrgang", "Int",  2147483648 )
+			query.exec ( err, res ) ->
+				should.exist( err )
+				( err.name ).should.equal( 'request--params-error' )
 				done()
 				return				
 			return
@@ -466,6 +482,7 @@ describe "Test for node-mssql-connector", ->
 				( res.result.length ).should.equal( 2 )
 				done()
 				return
+
 
 	describe "Speed tests", ->
 

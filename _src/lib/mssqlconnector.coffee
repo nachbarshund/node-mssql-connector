@@ -92,7 +92,7 @@ class MSSQLRequestBase extends require( './base' )
 				output 	= []
 
 
-				request = new Request @statement, (err, rowCount) =>
+				request = new Request @statement, ( err, rowCount, rows ) =>
 					if err
 						@_handleError( cb, 'request-error', err )
 						return
@@ -107,7 +107,7 @@ class MSSQLRequestBase extends require( './base' )
 					connection.close()
 					return
 
-				request.on 'row', (columns) =>
+				request.on 'row', ( columns ) =>
 					result.push( @_parseRow( columns ) )
 					return
 
@@ -121,7 +121,11 @@ class MSSQLRequestBase extends require( './base' )
 
 				
 				@_setRequestParams request,  =>
-					connection.execSql( request )
+					# Catch errros whith the executed statement
+					try
+						connection.execSql( request )
+					catch e
+						@_handleError( cb, 'request--params-error', e )
 					return
 				return
 		return
