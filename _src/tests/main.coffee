@@ -81,7 +81,6 @@ describe "Test for node-mssql-connector", ->
 			query.param( "id", "Int",  100 )
 			query.param( "id", "Int",  200 )
 			query.exec ( err, res ) ->
-				console.log err
 				should.exist( err )
 				done()
 				return

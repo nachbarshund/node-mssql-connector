@@ -67,19 +67,18 @@ class MSSQLRequestBase extends require( './base' )
 			return
 
 		if not @_checkParams()
-			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters.' )
+			@_handleError( cb, "param-field-length", "The length of given params is different to set parameters." )
 			return
 
 		# Check if statement is given
 		else if not @statement?.length
-			@_handleError( cb, 'no-statement-given', 'The statement of query is missing.' )
+			@_handleError( cb, "no-statement-given", "The statement of query is missing." )
 			return
 
 		# Reset the error 
 		@_error = null
 		
 		@connectionpool.connectiontries = 0
-
 
 		# Error handling for connection pool
 		@connectionpool.on "error", ( err, connection ) =>
@@ -104,7 +103,7 @@ class MSSQLRequestBase extends require( './base' )
 
 			# Result which will be returned
 			result 		= []
-			output 	= []
+			
 
 			request = new Request @statement, ( err, rowCount, rows ) =>
 				if err
@@ -116,6 +115,10 @@ class MSSQLRequestBase extends require( './base' )
 					result: result
 					rowcount: rowCount
 
+				# Check if there is output for stored procedures
+				if @output?
+					returnobj.output = @output
+
 				# Release the connection back to the pool when finished
 				connection.close()
 
@@ -123,22 +126,22 @@ class MSSQLRequestBase extends require( './base' )
 				cb( null,  returnobj )
 				return
 
-			request.on 'row', ( columns ) =>
+			request.on "row", ( columns ) =>
 				result.push( @_parseRow( columns ) )
 				return
 
 			# This is only called if there are any output parameters in SQL 
-			request.on 'returnValue', ( key, value, options )->
-				_key = key?.toString()
+			request.on "returnValue", ( key, value, options ) =>
+				if not @output?
+					@output = []
+
 				obj = {}
-				obj[ _key ] = value
-				output.push( obj )
+				obj[ key?.toString() ] = value
+				@output.push( obj )
 				return
 
 			@_setRequestParams( request,  @_exec( request, connection ) )
 			return
-
-
 		return
 
 
@@ -412,9 +415,13 @@ class MSSQLRequestBase extends require( './base' )
 
 class MSSQLRequestStoredProd extends MSSQLRequestBase
 
-	_exec: ( request, connection ) =>
 
+	_exec: ( request, connection ) =>
 		return  =>
+			# Set outpur parameters
+			for outputparam, param of @_outparams
+				request.addOutputParameter( outputparam, param.type )
+
 			# Catch errors whith the executed statement
 			try
 				connection.callProcedure( request )
@@ -422,6 +429,8 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 				connection.close()
 				@_handleError( cb, 'request--params-error', e )
 			return
+
+
 	###
 	## _checkParams
 	
@@ -436,21 +445,6 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 	_checkParams: =>
 		return true
 
-
-	###
-	## _setOutputParams
-	
-	`mssqlconnector._setOutputParams()`
-	
-	Set all output params before request is executed.
-		
-	@api private
-	###
-	_setOutputParams: ( connection, request ) =>
-		for outputparam, param  of @_outparams
-			request.addOutputParameter( outputparam, param.type )
-		connection.callProcedure( request )
-		return
 
 	###
 	## param
@@ -542,9 +536,6 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api public
 	###
 	query: ( statement, options = {} )=>
-		#if not statement?.length
-		#	return false
-
 		@init( options )
 		return new MSSQLRequestBase( statement, @ )
 
@@ -564,8 +555,6 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api public
 	###
 	storedprod: ( statement, options = {} )=>
-		if not statement?.length
-			return false
 		@init( options )
 		return new MSSQLRequestStoredProd( statement, @ )
 
@@ -584,7 +573,7 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	###
 	getPool: =>
 		if not @isinit
-			return 'is-not-inited-yet'
+			return "is-not-inited-yet"
 		return @connectionpool
 
 	###

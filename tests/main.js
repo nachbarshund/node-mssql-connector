@@ -68,7 +68,6 @@
         query.param("id", "Int", 100);
         query.param("id", "Int", 200);
         query.exec(function(err, res) {
-          console.log(err);
           should.exist(err);
           done();
         });
