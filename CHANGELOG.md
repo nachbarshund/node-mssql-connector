@@ -1,4 +1,10 @@
 # Changelog
+`v0.3.0`
+- Upgrade to tedious version `1.11.5`
+- Upgrade to tedious-connection-pool version `0.3.8`
+- Change internal stored procedure exec (Alpha)
+- Detail error information with query and parameters.
+
 `v0.2.7`
 - Upgrade to tedious version `1.7.0`
 - Catch error in executing SQL, e.g. Values greater than integer max (2147483647)

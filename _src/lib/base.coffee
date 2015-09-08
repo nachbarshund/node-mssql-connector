@@ -63,6 +63,11 @@ module.exports = class Base
 		else 
 			_err = err
 
+		# Return detail error
+		if @config.detailerror?
+			_err.query = @statement
+			_err.params = @_params
+
 		# Set always first error which is given
 		@_error = _err if not @_error
 
@@ -70,7 +75,5 @@ module.exports = class Base
 		if _.isFunction( cb )
 			cb( _err )
 			return
-
 		return
 
-	

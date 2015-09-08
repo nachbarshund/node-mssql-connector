@@ -4,25 +4,28 @@ async 			= 	require "async"
 
 MSSQLConnector 	= 	require( "../lib/mssqlconnector" )
 
+try
+	config = require( "../config.json" )
+
+catch error
+	console.error "loading config file:"
+	console.log error
+	return
+
 # Here must be set the connection settings
-MSSQLClient 		=  	new MSSQLConnector
-					settings:
-						max: 20
-						min: 0
-						idleTimeoutMillis: 30000
-					connection:
-						userName: ""
-						password: ""
-						server: ""
-						options: 
-							database: ""	
+MSSQLClient 		=  	new MSSQLConnector( config )
+	
 
 # This must be empty to check wrong connection
 MSSQLClientFalseCon  =  	new MSSQLConnector
-					settings:
-						max: 20
-						min: 0
-						idleTimeoutMillis: 30000
+					detailerror: true
+					poolconfig:
+						max: 			30
+						min: 			0
+						acquireTimeout: 	30000
+						idleTimeout:		300000
+						retryDelay:		500
+						log:			false
 					connection:
 						userName: ""
 						password: ""
@@ -31,10 +34,10 @@ MSSQLClientFalseCon  =  	new MSSQLConnector
 							database: ""	
 
 
-TESTVARIABLES 	= {}
+TESTVARIABLES  = {}
 
 # Name for test table
-TABLENAME 	= "NMSQLCON_Testtable"
+TABLENAME 	=  "GruntTest"
 
 
 describe "Test for node-mssql-connector", ->
@@ -50,16 +53,16 @@ describe "Test for node-mssql-connector", ->
 		done()
 		return
 
-	describe "DATABASE start", ->
-		it "CREATE table (where all tests will be executed)", ( done ) =>
+	describe "Init setup", ->
+		it "Create new table", ( done ) =>
 			query = MSSQLClient.query( "
-					CREATE TABLE #{ TABLENAME } 
-					(
-						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
-						Name varchar( 250 ) default '',
-						jahrgang int,
-						Created smalldatetime default getDate()
-					)
+				CREATE TABLE #{ TABLENAME } 
+				(
+					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
+					Name varchar( 250 ) default '',
+					jahrgang int,
+					Created smalldatetime default getDate()
+				)
 			" )
 			query.exec ( err, res ) ->
 				should.not.exist( err )
@@ -67,35 +70,39 @@ describe "Test for node-mssql-connector", ->
 				return	
 			return
 
-
 	describe "Error handling, Connection check and syntax validation check", ->
+
+		it "Check incorrect connection (Except: error)", ( done ) ->
+			query = MSSQLClientFalseCon.query( "
+				SELECT * 
+				FROM #{ TABLENAME } 
+				WHERE id = @id
+			" )
+			query.param( "id", "Int",  100 )
+			query.param( "id", "Int",  200 )
+			query.exec ( err, res ) ->
+				console.log err
+				should.exist( err )
+				done()
+				return
+			return
+
 
 		it "Try to create same table again (Except: error)", ( done ) =>
 			query = MSSQLClient.query( "
-					CREATE TABLE #{ TABLENAME } 
-					(
-						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
-						Name varchar( 250 ) default '',
-						jahrgang int,
-						Created smalldatetime default getDate()
-					)
+				CREATE TABLE #{ TABLENAME } 
+				(
+					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
+					Name varchar( 250 ) default '',
+					jahrgang int,
+					Created smalldatetime default getDate()
+				)
 			" )
 			query.exec ( err, res ) ->
 				should.exist( err )
 				done()
 				return	
 			return
-
-
-		it "Check incorrect connection (Except: error)", ( done ) ->
-			query = MSSQLClientFalseCon.query( "
-				SELECT    TOP 1  *
-				FROM       #{ TABLENAME } 
-			" )
-			query.exec ( err, res ) ->
-				should.exist( err )
-				done()
-				return
 
 
 		it "Throw error on empty statement", ( done ) ->
@@ -139,15 +146,14 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 
+		
 
 		it "Set params which are not in statement", ( done ) ->
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME } 
-				WHERE id = @id
 			" )
 			query.param( "id", "Int",  200 )
-			query.param( 'name', "Int",  100 )
 			query.exec ( err, res ) ->
 				should.exist( err )
 				done()
@@ -233,7 +239,7 @@ describe "Test for node-mssql-connector", ->
 				return				
 			return
 
-		it "Insert with intege > 2147483647", ( done )=>
+		it "Insert with integer > 2147483647", ( done )=>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -246,7 +252,7 @@ describe "Test for node-mssql-connector", ->
 			query.param( "jahrgang", "Int",  2147483648 )
 			query.exec ( err, res ) ->
 				should.exist( err )
-				( err.name ).should.equal( 'request--params-error' )
+				( err.name ).should.equal( 'request-error' )
 				done()
 				return				
 			return
@@ -438,7 +444,7 @@ describe "Test for node-mssql-connector", ->
 				return
 
 
-	describe "TESTS for tedious v1.0.0", ->
+	describe "TESTS for tedious v1.11.5", ->
 
 		it "Insert three datasets", ( done )=>
 			query = MSSQLClient.query( "
@@ -483,7 +489,7 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 
-
+	
 	describe "Speed tests", ->
 
 		@timeout( 900000000 )
@@ -517,7 +523,6 @@ describe "Test for node-mssql-connector", ->
 				return
 		return
 
-
 	describe "DATABASE end", ->
 		
 		it "Delete the created table", ( done ) =>
@@ -531,3 +536,4 @@ describe "Test for node-mssql-connector", ->
 				return	
 			return
 		return
+

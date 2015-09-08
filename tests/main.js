@@ -1,5 +1,5 @@
 (function() {
-  var MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, TABLENAME, TESTVARIABLES, async, should;
+  var MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, TABLENAME, TESTVARIABLES, async, config, should;
 
   should = require("should");
 
@@ -7,27 +7,25 @@
 
   MSSQLConnector = require("../lib/mssqlconnector");
 
-  MSSQLClient = new MSSQLConnector({
-    settings: {
-      max: 20,
-      min: 0,
-      idleTimeoutMillis: 30000
-    },
-    connection: {
-      userName: "",
-      password: "",
-      server: "",
-      options: {
-        database: ""
-      }
-    }
-  });
+  try {
+    config = require("../config.json");
+  } catch (error) {
+    console.error("loading config file:");
+    console.log(error);
+    return;
+  }
+
+  MSSQLClient = new MSSQLConnector(config);
 
   MSSQLClientFalseCon = new MSSQLConnector({
-    settings: {
-      max: 20,
+    detailerror: true,
+    poolconfig: {
+      max: 30,
       min: 0,
-      idleTimeoutMillis: 30000
+      acquireTimeout: 30000,
+      idleTimeout: 300000,
+      retryDelay: 500,
+      log: false
     },
     connection: {
       userName: "",
@@ -41,7 +39,7 @@
 
   TESTVARIABLES = {};
 
-  TABLENAME = "NMSQLCON_Testtable";
+  TABLENAME = "GruntTest";
 
   describe("Test for node-mssql-connector", function() {
     this.timeout(5000);
@@ -51,11 +49,11 @@
     after(function(done) {
       done();
     });
-    describe("DATABASE start", function() {
+    describe("Init setup", function() {
       var _this = this;
-      return it("CREATE table (where all tests will be executed)", function(done) {
+      return it("Create new table", function(done) {
         var query;
-        query = MSSQLClient.query("					CREATE TABLE " + TABLENAME + " 					(						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),						Name varchar( 250 ) default '',						jahrgang int,						Created smalldatetime default getDate()					)			");
+        query = MSSQLClient.query("				CREATE TABLE " + TABLENAME + " 				(					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),					Name varchar( 250 ) default '',					jahrgang int,					Created smalldatetime default getDate()				)			");
         query.exec(function(err, res) {
           should.not.exist(err);
           done();
@@ -64,18 +62,21 @@
     });
     describe("Error handling, Connection check and syntax validation check", function() {
       var _this = this;
-      it("Try to create same table again (Except: error)", function(done) {
+      it("Check incorrect connection (Except: error)", function(done) {
         var query;
-        query = MSSQLClient.query("					CREATE TABLE " + TABLENAME + " 					(						ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),						Name varchar( 250 ) default '',						jahrgang int,						Created smalldatetime default getDate()					)			");
+        query = MSSQLClientFalseCon.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
+        query.param("id", "Int", 100);
+        query.param("id", "Int", 200);
         query.exec(function(err, res) {
+          console.log(err);
           should.exist(err);
           done();
         });
       });
-      it("Check incorrect connection (Except: error)", function(done) {
+      it("Try to create same table again (Except: error)", function(done) {
         var query;
-        query = MSSQLClientFalseCon.query("				SELECT    TOP 1  *				FROM       " + TABLENAME + " 			");
-        return query.exec(function(err, res) {
+        query = MSSQLClient.query("				CREATE TABLE " + TABLENAME + " 				(					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),					Name varchar( 250 ) default '',					jahrgang int,					Created smalldatetime default getDate()				)			");
+        query.exec(function(err, res) {
           should.exist(err);
           done();
         });
@@ -110,9 +111,8 @@
       });
       it("Set params which are not in statement", function(done) {
         var query;
-        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + " 			");
         query.param("id", "Int", 200);
-        query.param('name', "Int", 100);
         query.exec(function(err, res) {
           should.exist(err);
           done();
@@ -169,14 +169,14 @@
           done();
         });
       });
-      return it("Insert with intege > 2147483647", function(done) {
+      return it("Insert with integer > 2147483647", function(done) {
         var query;
         query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )				SELECT @@IDENTITY AS 'id'			");
         query.param("name", "VarChar", "IntegerCheck");
         query.param("jahrgang", "Int", 2147483648);
         query.exec(function(err, res) {
           should.exist(err);
-          err.name.should.equal('request--params-error');
+          err.name.should.equal('request-error');
           done();
         });
       });
@@ -318,7 +318,7 @@
         });
       });
     });
-    describe("TESTS for tedious v1.0.0", function() {
+    describe("TESTS for tedious v1.11.5", function() {
       var _this = this;
       it("Insert three datasets", function(done) {
         var query;

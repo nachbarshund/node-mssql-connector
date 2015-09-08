@@ -11,7 +11,7 @@ Run queries or stored procedures. Based on [tedious by Mike D Pilsbury](http://p
 - Get the data in JSON format
 - Run the test to check that everything is correct
 
-CurrentVersion: `0.2.7`
+CurrentVersion: `0.3`
 
 ## Installation
 
@@ -178,9 +178,14 @@ storedprod.exec( function( err, res ){
 For recent changes please see the [Changelog](https://github.com/Nachbarshund/node-mssql-connector/blob/master/CHANGELOG.md).
 
 
+## Tips
+
+To run a local (test) enviroment for mssql use the awesome tool from fgrehm via Virtual Box: [https://github.com/fgrehm/vagrant-mssql-express](https://github.com/fgrehm/vagrant-mssql-express)
+
 ## The MIT License (MIT)
 
-Copyright © 2014 Christopher Zotter, http://www.tcs.de
+Copyright © 2014 - 2015 Christopher Zotter  
+[http://www.tcs.de](http://www.tcs.de)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

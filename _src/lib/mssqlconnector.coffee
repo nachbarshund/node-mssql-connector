@@ -16,6 +16,9 @@ class MSSQLRequestBase extends require( './base' )
 		@_fields 		= []
 		@_error		= null
 
+		@_errorcounter 	= 
+			connectiontries: 	0
+
 		# Get data from paren
 		@config 		= parent.config
 		@connectionpool 	= parent.connectionpool
@@ -64,7 +67,7 @@ class MSSQLRequestBase extends require( './base' )
 			return
 
 		if not @_checkParams()
-			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters' )
+			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters.' )
 			return
 
 		# Check if statement is given
@@ -74,61 +77,80 @@ class MSSQLRequestBase extends require( './base' )
 
 		# Reset the error 
 		@_error = null
+		
+		@connectionpool.connectiontries = 0
 
 
-		@connectionpool.requestConnection ( err, connection ) =>
+		# Error handling for connection pool
+		@connectionpool.on "error", ( err, connection ) =>
+			if err.name.toLowerCase() is "connectionerror"
+				@connectionpool.connectiontries++
+				if @config.poolconfig.tries is @connectionpool.connectiontries
+					@connectionpool.drain()
+					@_handleError( cb, "connection-failed", err )
+					return
+				return
+
+			@_handleError( cb, "connection-error", err )
+			return
+
+
+		@connectionpool.acquire ( err, connection ) =>
 			if err
+				# Release connection on error
+				connection.release()
 				@_handleError( cb, 'connection-failed', err )
 				return
 
-			# Start when connection is there
-			connection.on 'connect', ( err ) =>
+			# Result which will be returned
+			result 		= []
+			output 	= []
+
+			request = new Request @statement, ( err, rowCount, rows ) =>
 				if err
-					@_handleError( cb, 'connection-failed', err )
-					return
-				
-				# Result which will be returned
-				result 	= []
-				output 	= []
-
-
-				request = new Request @statement, ( err, rowCount, rows ) =>
-					if err
-						@_handleError( cb, 'request-error', err )
-						return
-
-					returnobj = 
-						result: result
-						rowcount: rowCount
-
-					# Return the data
-					cb( null,  returnobj )
-
-					connection.close()
+					connection.release()
+					@_handleError( cb, 'request-error', err )
 					return
 
-				request.on 'row', ( columns ) =>
-					result.push( @_parseRow( columns ) )
-					return
+				returnobj = 
+					result: result
+					rowcount: rowCount
 
-				# This is only called if there are any output parameters in SQL 
-				request.on 'returnValue', ( key, value, options )->
-					_key = key?.toString()
-					obj = {}
-					obj[ _key ] = value
-					output.push( obj )
-					return
+				# Release the connection back to the pool when finished
+				connection.close()
 
-				
-				@_setRequestParams request,  =>
-					# Catch errros whith the executed statement
-					try
-						connection.execSql( request )
-					catch e
-						@_handleError( cb, 'request--params-error', e )
-					return
+				# Return the data
+				cb( null,  returnobj )
 				return
+
+			request.on 'row', ( columns ) =>
+				result.push( @_parseRow( columns ) )
+				return
+
+			# This is only called if there are any output parameters in SQL 
+			request.on 'returnValue', ( key, value, options )->
+				_key = key?.toString()
+				obj = {}
+				obj[ _key ] = value
+				output.push( obj )
+				return
+
+			@_setRequestParams( request,  @_exec( request, connection ) )
+			return
+
+
 		return
+
+
+	_exec: ( request, connection ) =>
+		return  =>
+			# Catch errors whith the executed statement
+			try
+				connection.execSql( request )
+			catch e
+				connection.close()
+				@_handleError( cb, 'request--params-error', e )
+			return
 
 	
 	###
@@ -172,8 +194,6 @@ class MSSQLRequestBase extends require( './base' )
 			value: if value? then value else null
 
 		return @
-	
-
 
 	###
 	## outParam
@@ -226,7 +246,6 @@ class MSSQLRequestBase extends require( './base' )
 		# 4. Set new params
 		for _param, idx in value
 			@param(  "#{ field }#{ idx }", datatype, _param )
-
 		return
 		
 
@@ -393,110 +412,22 @@ class MSSQLRequestBase extends require( './base' )
 
 class MSSQLRequestStoredProd extends MSSQLRequestBase
 
-	###
-	## exec
-	
-	`mssqlconnector.exec( cb )`
-	
-	Execute the query. Make a new connection for each request and close after success. 
-	Output will only set on storedprocedure.
+	_exec: ( request, connection ) =>
 
-	Example return:
-
-		{
-		    result: [
-		        {
-		            id: 144,
-		            name: 'UpdatedName',
-		            jahrgang: 1986,
-		            created: FriApr19201311: 46: 00GMT+0200(CEST)
-		        }
-		    ],
-		    rowcount: 3,
-		    output: [
-		        {
-		            Total: 100
-		        },
-		        {
-		            Teststring: 'Output'
-		        }
-		    ]
-		}
-
-	@param { Function } cb Callback function 
-	
-	@api public
-	###
-	exec: ( cb ) =>	
-		# Check if there is any error bevore then return this
-		if @_error
-			@_handleError( cb, @_error )
+		return  =>
+			# Catch errors whith the executed statement
+			try
+				connection.callProcedure( request )
+			catch e
+				connection.close()
+				@_handleError( cb, 'request--params-error', e )
 			return
-
-		if not @_checkParams()
-			@_handleError( cb, 'param-field-length', 'The length of given params is different to set parameters' )
-			return
-
-		@connectionpool.requestConnection ( err, connection ) =>
-			if err
-				@_handleError( cb, 'connection-failed', err )
-				return
-
-			# Start when connection is there
-			connection.on 'connect', (err) =>
-				if err
-					@_handleError( cb, 'connection-failed', err )
-					return
-				
-				# Result which will be returned
-				result 	= []
-				output 	= []
-
-				request = new Request @statement, ( err, rowCount ) =>
-					if err
-						@_handleError( cb, 'request-error', err )
-						return
-
-					returnobj = 
-						result: result
-						rowcount: rowCount
-						 
-					# Return output if it is stored procedure	
-					if output?.length
-						returnobj.output = output
-
-					# Return the data
-					cb( null,  returnobj )
-					connection.close()
-					return
-
-				request.on 'row', (columns) =>
-					result.push( @_parseRow( columns ) )
-					return
-
-				# This is only called if there are any output parameters in SQL 
-				request.on 'returnValue', ( key, value, options )->
-					_key 		= key?.toString()
-					obj 		= {}
-					obj[ _key ] 	= value
-					output.push( obj )
-					return				
-				
-
-				@_setRequestParams request,  =>
-					@_setOutputParams( connection, request )
-					return
-				return
-			return
-
-
 	###
 	## _checkParams
 	
 	`mssqlconnector._checkParams()`
 	
 	Check if the set param items are valid to the fields from SQL statement
-	
 	
 	@return { Boolean } Return  
 	
@@ -564,10 +495,15 @@ module.exports = class MSSQLConnector extends require( "./base" )
 				userName: 		''
 				password: 		''
 				server: 		''
-			settings:
-				max: 			20
+			poolconfig:
+				max: 			30
 				min: 			0
-				idleTimeoutMillis: 	30000
+				acquireTimeout: 	30000
+				idleTimeout:		300000
+				retryDelay:		500
+				log:			false
+				tries:			5
+
 			sqlparams: false
 
 		return _defaults
@@ -635,6 +571,23 @@ module.exports = class MSSQLConnector extends require( "./base" )
 
 
 	###
+	## getPool
+	
+	`mssqlconnector.getPool( id, cb )`
+	
+	Return the current connection pool.
+	
+	
+	@return { Object } Return Current connection pool 
+	
+	@api private
+	###
+	getPool: =>
+		if not @isinit
+			return 'is-not-inited-yet'
+		return @connectionpool
+
+	###
 	## initConnection
 	
 	`mssqlconnector.initConnection()`
@@ -645,5 +598,5 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	###
 	_initConnection: =>
 		@isinit = true
-		@connectionpool = new ConnectionPool( @config.settings, @config.connection )
+		@connectionpool = new ConnectionPool( @config.poolconfig, @config.connection )
 		return
