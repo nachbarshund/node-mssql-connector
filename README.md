@@ -169,17 +169,10 @@ storedprod.exec( function( err, res ){
 
 ```
   
-
-## Not implemented yet
-- Test for inserting stored procedures
-- Test for run stored procedures
-- Check if database exists
-
 For recent changes please see the [Changelog](https://github.com/Nachbarshund/node-mssql-connector/blob/master/CHANGELOG.md).
 
 
 ## Tips
-
 To run a local (test) enviroment for mssql use the awesome tool from fgrehm via Virtual Box: [https://github.com/fgrehm/vagrant-mssql-express](https://github.com/fgrehm/vagrant-mssql-express)
 
 ## The MIT License (MIT)
