@@ -8,7 +8,7 @@ try
 	config = require( "../config.json" )
 
 catch error
-	console.error "loading config file:"
+	console.error "loading config file"
 	console.log error
 	return
 
@@ -20,7 +20,7 @@ MSSQLClient 		=  	new MSSQLConnector( config )
 MSSQLClientFalseCon  =  	new MSSQLConnector
 					detailerror: true
 					poolconfig:
-						max: 			30
+						max: 			20
 						min: 			0
 						acquireTimeout: 	30000
 						idleTimeout:		300000
@@ -69,6 +69,7 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return	
 			return
+
 
 	describe "Error handling, Connection check and syntax validation check", ->
 
@@ -489,6 +490,66 @@ describe "Test for node-mssql-connector", ->
 				return
 
 	
+	describe "Single / multiple IN select statements", ->
+		it "Insert first user with \"jahrgang\" 56", ( done )=>
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					jahrgang 
+				) 
+				VALUES( @name, @jahrgang )
+			" )
+			query.param( "name", "VarChar",  "In_User 1" )
+			query.param( "jahrgang", "Int",  56 )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				done()
+				return
+			return
+
+		it "Insert second user with \"jahrgang\" 69", ( done )=>
+			query = MSSQLClient.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					jahrgang 
+				) 
+				VALUES( @name, @jahrgang )
+			" )
+			query.param( "name", "VarChar",  "In_User 1" )
+			query.param( "jahrgang", "Int",  69 )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				done()
+				return
+			return
+
+		it "Select IN statement with one parameter", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE jahrgang IN (@jahrgaenge)
+			" )
+			query.param( "jahrgaenge", "Int",  [ 56,69 ] )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.rowcount ).should.equal( 2 )
+				done()
+				return
+
+		it "Select IN statement with two parameter with the same name", ( done )=>
+			query = MSSQLClient.query( "
+				SELECT * 
+				FROM #{ TABLENAME }  
+				WHERE jahrgang IN (@jahrgaenge) or jahrgang IN (@jahrgaenge)
+			" )
+			query.param( "jahrgaenge", "Int",  [ 56,69 ] )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.rowcount ).should.equal( 2 )
+				done()
+				return
+		return
+
 	describe "Speed tests", ->
 
 		@timeout( 900000000 )
@@ -509,18 +570,19 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 		
-		it "Seriel from ID (500 records)", ( done )=>
-			async.mapSeries [1..500], _queryFunc, ( err, resp ) ->
+		it "Seriel from ID (100 records)", ( done )=>
+			async.mapSeries [1..100], _queryFunc, ( err, resp ) ->
 				should.not.exist( err )
 				done()
 				return
 
-		it "Parallel from ID (500 records)", ( done )=>			
-			async.map [1....500], _queryFunc, ( err, resp ) ->
+		it "Parallel from ID (100 records)", ( done )=>			
+			async.map [1....100], _queryFunc, ( err, resp ) ->
 				should.not.exist( err )
 				done()
 				return
 		return
+
 
 	describe "DATABASE end", ->
 		

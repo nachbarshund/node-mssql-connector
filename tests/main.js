@@ -10,7 +10,7 @@
   try {
     config = require("../config.json");
   } catch (error) {
-    console.error("loading config file:");
+    console.error("loading config file");
     console.log(error);
     return;
   }
@@ -20,7 +20,7 @@
   MSSQLClientFalseCon = new MSSQLConnector({
     detailerror: true,
     poolconfig: {
-      max: 30,
+      max: 20,
       min: 0,
       acquireTimeout: 30000,
       idleTimeout: 300000,
@@ -347,6 +347,49 @@
         });
       });
     });
+    describe("Single / multiple IN select statements", function() {
+      var _this = this;
+      it("Insert first user with \"jahrgang\" 56", function(done) {
+        var query;
+        query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )			");
+        query.param("name", "VarChar", "In_User 1");
+        query.param("jahrgang", "Int", 56);
+        query.exec(function(err, res) {
+          should.not.exist(err);
+          done();
+        });
+      });
+      it("Insert second user with \"jahrgang\" 69", function(done) {
+        var query;
+        query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )			");
+        query.param("name", "VarChar", "In_User 1");
+        query.param("jahrgang", "Int", 69);
+        query.exec(function(err, res) {
+          should.not.exist(err);
+          done();
+        });
+      });
+      it("Select IN statement with one parameter", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE jahrgang IN (@jahrgaenge)			");
+        query.param("jahrgaenge", "Int", [56, 69]);
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.rowcount.should.equal(2);
+          done();
+        });
+      });
+      it("Select IN statement with two parameter with the same name", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT * 				FROM " + TABLENAME + "  				WHERE jahrgang IN (@jahrgaenge) or jahrgang IN (@jahrgaenge)			");
+        query.param("jahrgaenge", "Int", [56, 69]);
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.rowcount.should.equal(2);
+          done();
+        });
+      });
+    });
     describe("Speed tests", function() {
       var _queryFunc,
         _this = this;
@@ -366,22 +409,22 @@
           }
         });
       };
-      it("Seriel from ID (500 records)", function(done) {
+      it("Seriel from ID (100 records)", function(done) {
         var _i, _results;
         return async.mapSeries((function() {
           _results = [];
-          for (_i = 1; _i <= 500; _i++){ _results.push(_i); }
+          for (_i = 1; _i <= 100; _i++){ _results.push(_i); }
           return _results;
         }).apply(this), _queryFunc, function(err, resp) {
           should.not.exist(err);
           done();
         });
       });
-      it("Parallel from ID (500 records)", function(done) {
+      it("Parallel from ID (100 records)", function(done) {
         var _i, _results;
         return async.map((function() {
           _results = [];
-          for (var _i = 1; 1 <= .500 ? _i < .500 : _i > .500; 1 <= .500 ? _i++ : _i--){ _results.push(_i); }
+          for (var _i = 1; 1 <= .100 ? _i < .100 : _i > .100; 1 <= .100 ? _i++ : _i--){ _results.push(_i); }
           return _results;
         }).apply(this), _queryFunc, function(err, resp) {
           should.not.exist(err);

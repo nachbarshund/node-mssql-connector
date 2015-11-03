@@ -1,24 +1,34 @@
 # Changelog
+`v0.4.0`
+
+- Fix [#7](https://github.com/Nachbarshund/node-mssql-connector/issues/7): Multiple IN statement with the same parameter 
+
 `v0.3.0`
+
 - Upgrade to tedious version `1.11.5`
 - Upgrade to tedious-connection-pool version `0.3.8`
 - Change internal stored procedure exec (Alpha)
 - Detail error information with query and parameters.
 
 `v0.2.7`
+
 - Upgrade to tedious version `1.7.0`
 - Catch error in executing SQL, e.g. Values greater than integer max (2147483647)
 
 `v0.2.6`
+
 - Update docs and create changelog
 
 `v0.2.5`
+ 
 - Fix set param bug on stored procedures
 
 `v0.2.4`
+
 - Update tedious version vo 1.0.0 and add tests for this
 
 `v0.2.3`
+
 - Set correct versions in np modules (package.json)
 
 `v0.2.2`

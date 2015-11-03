@@ -1,5 +1,5 @@
 _ 			= require('lodash')._
-extend 		= require('extend')
+extend 			= require('extend')
 ConnectionPool 	= require('tedious-connection-pool')
 DataTypes 		= require('tedious').TYPES
 Request 		= require('tedious').Request
@@ -239,9 +239,8 @@ class MSSQLRequestBase extends require( './base' )
 				statement += ','
 			statement += "@#{ field }#{ idx }"
 
-
-		# 2. Replace the statement with new fields
-		@statement = @statement.replace( "@#{ field }", statement )
+		# 2. Replace the statement with new fields. Replace all with the same @name.
+		@statement = @statement.replace( new RegExp( "@#{ field }", "g" ), statement )
 		
 		# 3. Reset all params
 		@_setParams()
@@ -305,7 +304,6 @@ class MSSQLRequestBase extends require( './base' )
 
 		paramkeys = _.keys( @_params )
 
-
 		# Check if there are all files set
 		for _field in @_fields
 			if _field not in paramkeys
@@ -330,7 +328,7 @@ class MSSQLRequestBase extends require( './base' )
 	@api private
 	###
 	_getDataType: ( datatype ) =>
-		# Doublcheck validation
+		# Double check validation
 		if not @_checkDataType( datatype )
 			@_handleError( null, 'invalid-datatype' )
 			return
