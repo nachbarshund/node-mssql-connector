@@ -1,5 +1,5 @@
 # Changelog
-`v0.5.0`
+`v1.0.0`
 
 - Fix [#11](https://github.com/Nachbarshund/node-mssql-connector/issues/11) Remove memory leak in connection pool. There is also a test for memory leak.
 - `Breaking change` Global connection error handler on initialized client instance (more information in README). You have to detect connection problems global since this version. .exec callback will *not* be called

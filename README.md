@@ -11,7 +11,7 @@ Run queries or stored procedures. Based on [tedious by Mike D Pilsbury](http://p
 - Get the data in JSON format
 - Run the test to check that everything is correct
 
-CurrentVersion: `0.5.0`
+CurrentVersion: `1.0.0`
 
 ## Installation
 
@@ -43,7 +43,7 @@ MSSQLClient = new MSSQLConnector( {
 ```
 
 ### Connection error handling
-Since `v0.5.0`:
+Since `v1.0.0`:
 
 ```js
 # Initiliazed client
