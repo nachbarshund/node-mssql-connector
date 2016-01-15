@@ -5,7 +5,7 @@ _ 		= require( "lodash" )._
 
 # Worker basics to handle errors and initialize modules
 
-module.exports = class Base
+module.exports = class Base extends require( "events" ).EventEmitter
 
 	###
 	## _defaults
@@ -54,7 +54,6 @@ module.exports = class Base
 	@api private
 	###
 	_handleError: ( cb, err, detail = null )=>
-
 		# try to create a error Object with humanized message
 		if _.isString( err )
 			_err = {}

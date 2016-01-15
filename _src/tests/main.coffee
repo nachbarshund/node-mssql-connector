@@ -1,9 +1,13 @@
 # import required test modules
-should 			= 	require "should"
-async 			= 	require "async"
+should 			= 	require( "should" )
+async 			= 	require( "async" )
+Chart 			= 	require( "cli-chart" )
+ProgressBar 	= 	require( "progress" )
 
+# Get internal modul
 MSSQLConnector 	= 	require( "../lib/mssqlconnector" )
 
+# Get config file
 try
 	config = require( "../config.json" )
 
@@ -12,20 +16,21 @@ catch error
 	console.log error
 	return
 
+
 # Here must be set the connection settings
 MSSQLClient 		=  	new MSSQLConnector( config )
-	
 
 # This must be empty to check wrong connection
 MSSQLClientFalseCon  =  	new MSSQLConnector
 					detailerror: true
 					poolconfig:
-						max: 			20
-						min: 			0
-						acquireTimeout: 	30000
-						idleTimeout:		300000
-						retryDelay:		500
-						log:			false
+						max: 				3000000
+						min: 				0
+						acquireTimeout: 	30000000
+						idleTimeout:		30000000
+						retryDelay:			500
+						log:				false
+						tries:				3
 					connection:
 						userName: ""
 						password: ""
@@ -37,7 +42,7 @@ MSSQLClientFalseCon  =  	new MSSQLConnector
 TESTVARIABLES  = {}
 
 # Name for test table
-TABLENAME 	=  "GruntTest"
+TABLENAME 	=  "GruntTest19"
 
 
 describe "Test for node-mssql-connector", ->
@@ -71,22 +76,7 @@ describe "Test for node-mssql-connector", ->
 			return
 
 
-	describe "Error handling, Connection check and syntax validation check", ->
-
-		it "Check incorrect connection (Except: error)", ( done ) ->
-			query = MSSQLClientFalseCon.query( "
-				SELECT * 
-				FROM #{ TABLENAME } 
-				WHERE id = @id
-			" )
-			query.param( "id", "Int",  100 )
-			query.param( "id", "Int",  200 )
-			query.exec ( err, res ) ->
-				should.exist( err )
-				done()
-				return
-			return
-
+	describe "Error handling and syntax validation check", ->
 
 		it "Try to create same table again (Except: error)", ( done ) =>
 			query = MSSQLClient.query( "
@@ -191,7 +181,6 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 			return
-
 
 	describe "Syntax checks", ->
 		
@@ -340,7 +329,7 @@ describe "Test for node-mssql-connector", ->
 				return
 
 
-		it "Get latest inserted ID", ( done )=>
+		it "Get latest inserted ID", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME }  
@@ -362,7 +351,7 @@ describe "Test for node-mssql-connector", ->
 				return
 		
 		
-		it "Get updated data", ( done )=>
+		it "Get updated data", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME } 
@@ -385,7 +374,7 @@ describe "Test for node-mssql-connector", ->
 				return
 
 				
-		it "Select with LIKE statement", ( done )=>
+		it "Select with LIKE statement", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT     *
 				FROM       #{ TABLENAME } 
@@ -399,7 +388,7 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 
-		it "Select with IN statement (ids)", ( done )=>
+		it "Select with IN statement (ids)", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT     *
 				FROM       #{ TABLENAME } 
@@ -415,8 +404,7 @@ describe "Test for node-mssql-connector", ->
 	
 	describe "DELETE statements", ->
 
-
-		it "Delete ID which is not in table", ( done )=>
+		it "Delete ID which is not in table", ( done ) =>
 			query = MSSQLClient.query( " 
 				DELETE FROM #{ TABLENAME }  
 				WHERE id = @id
@@ -429,7 +417,7 @@ describe "Test for node-mssql-connector", ->
 				return
 
 
-		it "Delete latest inserted ID", ( done )=>
+		it "Delete latest inserted ID", ( done ) =>
 			query = MSSQLClient.query( "
 				DELETE FROM #{ TABLENAME }  
 				WHERE id = @id
@@ -446,7 +434,7 @@ describe "Test for node-mssql-connector", ->
 
 	describe "TESTS for tedious v1.11.5", ->
 
-		it "Insert three datasets", ( done )=>
+		it "Insert three datasets", ( done ) =>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -475,7 +463,7 @@ describe "Test for node-mssql-connector", ->
 				return			
 			return
 
-		it "Select with multiple results", ( done )=>
+		it "Select with multiple results", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT TOP 2 * 
 				FROM #{ TABLENAME }  
@@ -491,7 +479,7 @@ describe "Test for node-mssql-connector", ->
 
 	
 	describe "Single / multiple IN select statements", ->
-		it "Insert first user with \"jahrgang\" 56", ( done )=>
+		it "Insert first user with \"jahrgang\" 56", ( done ) =>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -507,7 +495,7 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 
-		it "Insert second user with \"jahrgang\" 69", ( done )=>
+		it "Insert second user with \"jahrgang\" 69", ( done ) =>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -523,7 +511,7 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 
-		it "Select IN statement with one parameter", ( done )=>
+		it "Select IN statement with one parameter", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME }  
@@ -536,7 +524,7 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 
-		it "Select IN statement with two parameter with the same name", ( done )=>
+		it "Select IN statement with two parameter with the same name", ( done ) =>
 			query = MSSQLClient.query( "
 				SELECT * 
 				FROM #{ TABLENAME }  
@@ -550,15 +538,16 @@ describe "Test for node-mssql-connector", ->
 				return
 		return
 
+
 	describe "Speed tests", ->
 
 		@timeout( 900000000 )
-		_queryFunc = ( idx, cb )->
+		_queryFunc = ( idx, cb ) ->
 			query = MSSQLClient.query( "
 				SELECT TOP 1 ID 
 				FROM #{ TABLENAME }  
 			" )			
-			query.exec (err, resp)->
+			query.exec (err, resp) ->
 				if err
 					cb( err )
 					return
@@ -570,17 +559,66 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 		
-		it "Seriel from ID (100 records)", ( done )=>
+		it "Seriel from ID (100 records)", ( done ) =>
 			async.mapSeries [1..100], _queryFunc, ( err, resp ) ->
 				should.not.exist( err )
 				done()
 				return
 
-		it "Parallel from ID (100 records)", ( done )=>			
-			async.map [1....100], _queryFunc, ( err, resp ) ->
+		it "Parallel from ID (100 records)", ( done ) =>			
+			async.map [1..100], _queryFunc, ( err, resp ) ->
 				should.not.exist( err )
 				done()
 				return
+		return
+
+
+	describe "Benchmarks tests", ->
+
+		@timeout( 900000000 )
+
+		# Functions for memory leak test
+		_total = 5000
+		progressBar = new ProgressBar( "Start queries (Total: #{ _total } ) [:bar] :percent", { total: _total })
+		
+		chart = new Chart
+			xlabel: "Request (Step 100)"
+			ylabel: "memory in usage (MB)"
+			direction: "y"
+			width: 100
+			height: 0
+			lmargin: 15
+			step: 2
+
+		convertByteinMB = ( x ) ->
+			return Math.round( ( ( x / 1024 ) / 1024 ) * 100 ) / 100
+
+		getCurrentMemory = ->
+			_memory = process.memoryUsage()
+			return convertByteinMB( _memory.heapUsed )
+
+		_queryFunc = ( idx, cb ) ->
+			query = MSSQLClient.query( "
+				SELECT TOP 1 ID 
+				FROM #{ TABLENAME }  
+			" )			
+			query.exec ( err, resp ) ->
+				if idx % 100 is 0 
+					chart.addBar( getCurrentMemory())
+
+				progressBar.tick()
+
+				cb()
+				return
+			return
+		
+
+		it "Check memory leak (#{ _total } requests)", ( done ) =>
+			async.eachSeries [1.._total], _queryFunc, ( err, resp ) ->
+				chart.draw()
+				done()
+				return
+			return
 		return
 
 
@@ -597,4 +635,21 @@ describe "Test for node-mssql-connector", ->
 				return	
 			return
 		return
+
+
+	describe "Connection tests", ->
+		@timeout( 900000000 )
+		it "Check incorrect connection (Except: error)", ( done ) =>
+			MSSQLClientFalseCon.on "error", ( msg ) =>
+				should.exist( msg )
+				done()
+				return
+
+			query = MSSQLClientFalseCon.query( "
+				SELECT TOP 1 ID 
+				FROM #{ TABLENAME } 
+			" )
+			query.exec ( err, res ) ->
+				return
+			return
 

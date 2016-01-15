@@ -1,27 +1,26 @@
-_ 			= require('lodash')._
-extend 			= require('extend')
-ConnectionPool 	= require('tedious-connection-pool')
-DataTypes 		= require('tedious').TYPES
-Request 		= require('tedious').Request
+_ 				= require( "lodash" )._
+extend 			= require( "extend" )
+ConnectionPool 	= require( "tedious-connection-pool" )
+DataTypes 		= require( "tedious" ).TYPES
+Request 		= require( "tedious" ).Request
+
+# Reset connection pool on every instance of client
+connectionpool = null
 
 
-class MSSQLRequestBase extends require( './base' )
+class MSSQLRequestBase extends require( "./base" )
 
-	constructor: ( @statement, parent ) ->
+	constructor: ( @statement, @parent ) ->
 		super
 
 		# Set the defaults
-		@_params 		= {}
-		@_outparams 		= {}
-		@_fields 		= []
+		@_params 	= {}
+		@_outparams = {}
+		@_fields 	= []
 		@_error		= null
 
 		@_errorcounter 	= 
 			connectiontries: 	0
-
-		# Get data from paren
-		@config 		= parent.config
-		@connectionpool 	= parent.connectionpool
 
 		@_setParams()
 		return
@@ -75,76 +74,23 @@ class MSSQLRequestBase extends require( './base' )
 			@_handleError( cb, "no-statement-given", "The statement of query is missing." )
 			return
 
-		# Reset the error 
-		@_error = null
-		
-		@connectionpool.connectiontries = 0
-
-		# Error handling for connection pool
-		@connectionpool.on "error", ( err, connection ) =>
-			if err.name.toLowerCase() is "connectionerror"
-				@connectionpool.connectiontries++
-				if @config.poolconfig.tries is @connectionpool.connectiontries
-					@connectionpool.drain()
-					@_handleError( cb, "connection-failed", err )
-					return
-				return
-
-			@_handleError( cb, "connection-error", err )
-			return
-
-
-		@connectionpool.acquire ( err, connection ) =>
-			if err
-				# Release connection on error
-				connection.release()
-				@_handleError( cb, 'connection-failed', err )
-				return
-
-			# Result which will be returned
-			result 		= []
-			
-
-			request = new Request @statement, ( err, rowCount, rows ) =>
-				if err
-					connection.release()
-					@_handleError( cb, 'request-error', err )
-					return
-
-				returnobj = 
-					result: result
-					rowcount: rowCount
-
-				# Check if there is output for stored procedures
-				if @output?
-					returnobj.output = @output
-
-				# Release the connection back to the pool when finished
-				connection.close()
-
-				# Return the data
-				cb( null,  returnobj )
-				return
-
-			request.on "row", ( columns ) =>
-				result.push( @_parseRow( columns ) )
-				return
-
-			# This is only called if there are any output parameters in SQL 
-			request.on "returnValue", ( key, value, options ) =>
-				if not @output?
-					@output = []
-
-				obj = {}
-				obj[ key?.toString() ] = value
-				@output.push( obj )
-				return
-
-			@_setRequestParams( request,  @_exec( request, connection ) )
-			return
+		# Run on parent
+		@parent.execQuery( @, cb )
 		return
 
 
+	###
+	## _exec
+	
+	`mssqlconnector._exec( id, cb )`
+	
+	Function called to close execute the query or close connection on error.
+	
+	@param { Object } request 
+	@param { Object } connection
+	
+	@api private
+	###
 	_exec: ( request, connection ) =>
 		return  =>
 			# Catch errors whith the executed statement
@@ -152,7 +98,7 @@ class MSSQLRequestBase extends require( './base' )
 				connection.execSql( request )
 			catch e
 				connection.close()
-				@_handleError( cb, 'request--params-error', e )
+				@_handleError( cb, "request--params-error", e )
 			return
 
 	
@@ -169,7 +115,7 @@ class MSSQLRequestBase extends require( './base' )
 	
 	@api public
 	###
-	param:  ( field, datatype, value ) =>
+	param: ( field, datatype, value ) =>
 
 		# Check if there is any error before. Then stop.
 		if @_error
@@ -183,11 +129,11 @@ class MSSQLRequestBase extends require( './base' )
 
 		# Check if field is valid
 		if not @_checkField( field, datatype )
-			@_handleError( null, 'param-not-found', "Param '#{ field }' was not found in query or is tried to set twice" )
+			@_handleError( null, "param-not-found", "Param '#{ field }' was not found in query or is tried to set twice" )
 			return @
 
 		if not @_checkDataType( datatype )
-			@_handleError( null, 'invalid-datatype', "Given datatype (#{ datatype }) for field '#{ field }' is not correct" )
+			@_handleError( null, "invalid-datatype", "Given datatype (#{ datatype }) for field '#{ field }' is not correct" )
 			return @
 		
 
@@ -197,6 +143,7 @@ class MSSQLRequestBase extends require( './base' )
 			value: if value? then value else null
 
 		return @
+
 
 	###
 	## outParam
@@ -307,10 +254,9 @@ class MSSQLRequestBase extends require( './base' )
 		# Check if there are all files set
 		for _field in @_fields
 			if _field not in paramkeys
-				@_handleError( null, 'missing-field' )
+				@_handleError( null, "missing-field" )
 				break
 				return false
-
 		return true
 
 
@@ -330,7 +276,7 @@ class MSSQLRequestBase extends require( './base' )
 	_getDataType: ( datatype ) =>
 		# Double check validation
 		if not @_checkDataType( datatype )
-			@_handleError( null, 'invalid-datatype' )
+			@_handleError( null, "invalid-datatype" )
 			return
 
 		return DataTypes[ datatype ]
@@ -362,7 +308,7 @@ class MSSQLRequestBase extends require( './base' )
 			_fieldname =  field[1...]
 
 			# Check if there are any SQL statements like @@@IDENTITY
-			if _fieldname not in @_fields and _fieldname[0] isnt '@'
+			if _fieldname not in @_fields and _fieldname[ 0 ] isnt '@'
 				@_fields.push(  _fieldname )
 		return
 
@@ -387,7 +333,7 @@ class MSSQLRequestBase extends require( './base' )
 			cb()		
 			return
 
-		@_handleError( null, 'no-exec-callback', 'There is no exec callback given' )
+		@_handleError( null, "no-exec-callback", "There is no exec callback given" )
 		return
 
 
@@ -469,7 +415,6 @@ class MSSQLRequestStoredProd extends MSSQLRequestBase
 		return @
 
 
-
 module.exports = class MSSQLConnector extends require( "./base" )
 	
 	###
@@ -484,17 +429,17 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	_defaults: =>
 		_defaults = 
 			connection:
-				userName: 		''
-				password: 		''
-				server: 		''
+				userName: 			''
+				password: 			''
+				server: 			''
 			poolconfig:
-				max: 			30
-				min: 			0
+				max: 				30
+				min: 				0
 				acquireTimeout: 	30000
 				idleTimeout:		300000
-				retryDelay:		500
-				log:			false
-				tries:			5
+				retryDelay:			500
+				log:				false
+				tries:				5
 
 			sqlparams: false
 
@@ -512,10 +457,85 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	
 	@api public
 	###
-	init: ( options = {} )=>
+	init: ( options = {} ) =>
 		if not @isinit 
 			# Initialize the connection to server
 			@_initConnection()
+		return
+
+
+	###
+	## execQuery
+	
+	`mssqlconnector.execQuery( id, cb )`
+	
+	Execute the query generated from Instance of MSSQLRequestStoredProd or MSSQLRequestBase
+	
+	@param { Object } queryInstance Instance of MSSQLRequestStoredProd or MSSQLRequestBase 
+	@param { Function } cb Callback function 
+	
+	@api private
+	###
+	execQuery: ( queryInstance, cb ) =>
+
+		# Reset the error 
+		@_error = null
+		
+		connectionpool.acquire ( err, connection ) =>
+			if err
+				# Release connection on error
+				connection.release()
+				queryInstance._handleError( cb, "connection-failed", err )
+				return
+
+			# Result which will be returned
+			result 		= []
+			
+			request = new Request queryInstance.statement, ( err, rowCount, rows ) =>
+				if err
+					connection.release()
+					queryInstance._handleError( cb, "request-error", err )
+					return
+
+				returnobj = 
+					result: result
+					rowcount: rowCount
+
+				# Check if there is output for stored procedures
+				if queryInstance.output?
+					returnobj.output = queryInstance.output
+
+				# Release the connection back to the pool when finished
+				connection.close()
+
+				# Remove all listeners to this request
+				request.removeAllListeners()
+
+				# Reset connetion tries after request was successfull
+				connectionpool.connectiontries = 0
+
+				# Return the data
+				cb( null,  returnobj )
+				return
+
+
+			request.on "row", ( columns ) =>
+				result.push( queryInstance._parseRow( columns ) )
+				return
+
+
+			# This is only called if there are any output parameters in SQL 
+			request.on "returnValue", ( key, value, options ) =>
+				if not queryInstance.output?
+					queryInstance.output = []
+
+				obj = {}
+				obj[ key?.toString() ] = value
+				queryInstance.output.push( obj )
+				return
+
+			queryInstance._setRequestParams( request, queryInstance._exec( request, connection ) )
+			return
 		return
 
 
@@ -533,7 +553,7 @@ module.exports = class MSSQLConnector extends require( "./base" )
 
 	@api public
 	###
-	query: ( statement, options = {} )=>
+	query: ( statement, options = {} ) =>
 		@init( options )
 		return new MSSQLRequestBase( statement, @ )
 
@@ -552,27 +572,32 @@ module.exports = class MSSQLConnector extends require( "./base" )
 
 	@api public
 	###
-	storedprod: ( statement, options = {} )=>
+	storedprod: ( statement, options = {} ) =>
 		@init( options )
 		return new MSSQLRequestStoredProd( statement, @ )
 
 
 	###
-	## getPool
+	## _errorCb
 	
-	`mssqlconnector.getPool( id, cb )`
+	`mssqlconnector._errorCb( id, cb )`
 	
-	Return the current connection pool.
+	Log error to client or console
 	
-	
-	@return { Object } Return Current connection pool 
+	@param { String } errormsg
 	
 	@api private
 	###
-	getPool: =>
-		if not @isinit
-			return "is-not-inited-yet"
-		return @connectionpool
+	_errorCb: ( errormsg ) =>
+		# Check if there are any listeners. 
+		if @listenerCount( "error" )
+			@emit( "error", errormsg )
+			return
+
+		# If there aren any listeners write this to console
+		console.error( errormsg )
+		return
+
 
 	###
 	## initConnection
@@ -584,6 +609,28 @@ module.exports = class MSSQLConnector extends require( "./base" )
 	@api private
 	###
 	_initConnection: =>
+		# Mark as inited
 		@isinit = true
-		@connectionpool = new ConnectionPool( @config.poolconfig, @config.connection )
+
+		# Init connection pool
+		connectionpool = new ConnectionPool( @config.poolconfig, @config.connection )
+
+		# On start set tries to 0
+		connectionpool.connectiontries = 0
+
+		# Error handling for connection pool
+		connectionpool.on "error", ( err, connection ) =>
+			if err.name.toLowerCase() is "connectionerror"
+				connectionpool.connectiontries++
+				if @config.poolconfig.tries is connectionpool.connectiontries
+					connectionpool.drain()
+					@_handleError( @_errorCb, "connection-failed", err )
+					return
+				return
+
+			@_handleError( @_errorCb, "connection-error", err )
+			return
 		return
+
+
+	

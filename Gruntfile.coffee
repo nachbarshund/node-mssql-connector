@@ -22,29 +22,30 @@ module.exports = (grunt) ->
 
 		mochacli:
 			options: 
-				require: ['should']
-				reporter: 'spec'
+				require: [ "should" ]
+				reporter: "spec"
 				bail: true
-			all: ['tests/*.js']
+				timeout: 300000
+			all: [ "tests/main.js" ]
 				
 
 
 
 
 	# NPM MODULES
-	grunt.loadNpmTasks "grunt-regarde"
-	grunt.loadNpmTasks "grunt-contrib-coffee"
-	grunt.loadNpmTasks 'grunt-notify'
-	grunt.loadNpmTasks "grunt-mocha-cli"
+	grunt.loadNpmTasks( "grunt-regarde" )
+	grunt.loadNpmTasks( "grunt-contrib-coffee" )
+	grunt.loadNpmTasks( "grunt-notify" )
+	grunt.loadNpmTasks( "grunt-mocha-cli" )
 
 	# Run on init
 	#grunt.task.run('notify_hooks')
 
 	# just a hack until this issue has been fixed: https://github.com/yeoman/grunt-regarde/issues/3
-	grunt.option('force', not grunt.option('force'))
+	grunt.option( "force", not grunt.option( "force" ) )
 
 
 	# ALIAS TASKS
-	grunt.registerTask "watch", "regarde"
-	grunt.registerTask "test", "mochacli"
-	grunt.registerTask "build", [ "coffee" ]
+	grunt.registerTask( "watch", "regarde" )
+	grunt.registerTask( "test", "mochacli" )
+	grunt.registerTask( "build", [ "coffee" ] )

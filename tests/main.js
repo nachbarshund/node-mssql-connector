@@ -1,9 +1,13 @@
 (function() {
-  var MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, TABLENAME, TESTVARIABLES, async, config, should;
+  var Chart, MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, ProgressBar, TABLENAME, TESTVARIABLES, async, config, should;
 
   should = require("should");
 
   async = require("async");
+
+  Chart = require("cli-chart");
+
+  ProgressBar = require("progress");
 
   MSSQLConnector = require("../lib/mssqlconnector");
 
@@ -20,12 +24,13 @@
   MSSQLClientFalseCon = new MSSQLConnector({
     detailerror: true,
     poolconfig: {
-      max: 20,
+      max: 3000000,
       min: 0,
-      acquireTimeout: 30000,
-      idleTimeout: 300000,
+      acquireTimeout: 30000000,
+      idleTimeout: 30000000,
       retryDelay: 500,
-      log: false
+      log: false,
+      tries: 3
     },
     connection: {
       userName: "",
@@ -39,7 +44,7 @@
 
   TESTVARIABLES = {};
 
-  TABLENAME = "GruntTest";
+  TABLENAME = "GruntTest19";
 
   describe("Test for node-mssql-connector", function() {
     this.timeout(5000);
@@ -60,18 +65,8 @@
         });
       });
     });
-    describe("Error handling, Connection check and syntax validation check", function() {
+    describe("Error handling and syntax validation check", function() {
       var _this = this;
-      it("Check incorrect connection (Except: error)", function(done) {
-        var query;
-        query = MSSQLClientFalseCon.query("				SELECT * 				FROM " + TABLENAME + " 				WHERE id = @id			");
-        query.param("id", "Int", 100);
-        query.param("id", "Int", 200);
-        query.exec(function(err, res) {
-          should.exist(err);
-          done();
-        });
-      });
       it("Try to create same table again (Except: error)", function(done) {
         var query;
         query = MSSQLClient.query("				CREATE TABLE " + TABLENAME + " 				(					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),					Name varchar( 250 ) default '',					jahrgang int,					Created smalldatetime default getDate()				)			");
@@ -424,7 +419,7 @@
         var _i, _results;
         return async.map((function() {
           _results = [];
-          for (var _i = 1; 1 <= .100 ? _i < .100 : _i > .100; 1 <= .100 ? _i++ : _i--){ _results.push(_i); }
+          for (_i = 1; _i <= 100; _i++){ _results.push(_i); }
           return _results;
         }).apply(this), _queryFunc, function(err, resp) {
           should.not.exist(err);
@@ -432,7 +427,55 @@
         });
       });
     });
-    return describe("DATABASE end", function() {
+    describe("Benchmarks tests", function() {
+      var chart, convertByteinMB, getCurrentMemory, progressBar, _queryFunc, _total,
+        _this = this;
+      this.timeout(900000000);
+      _total = 5000;
+      progressBar = new ProgressBar("Start queries (Total: " + _total + " ) [:bar] :percent", {
+        total: _total
+      });
+      chart = new Chart({
+        xlabel: "Request (Step 100)",
+        ylabel: "memory in usage (MB)",
+        direction: "y",
+        width: 100,
+        height: 0,
+        lmargin: 15,
+        step: 2
+      });
+      convertByteinMB = function(x) {
+        return Math.round(((x / 1024) / 1024) * 100) / 100;
+      };
+      getCurrentMemory = function() {
+        var _memory;
+        _memory = process.memoryUsage();
+        return convertByteinMB(_memory.heapUsed);
+      };
+      _queryFunc = function(idx, cb) {
+        var query;
+        query = MSSQLClient.query("				SELECT TOP 1 ID 				FROM " + TABLENAME + "  			");
+        query.exec(function(err, resp) {
+          if (idx % 100 === 0) {
+            chart.addBar(getCurrentMemory());
+          }
+          progressBar.tick();
+          cb();
+        });
+      };
+      it("Check memory leak (" + _total + " requests)", function(done) {
+        var _i, _results;
+        async.eachSeries((function() {
+          _results = [];
+          for (var _i = 1; 1 <= _total ? _i <= _total : _i >= _total; 1 <= _total ? _i++ : _i--){ _results.push(_i); }
+          return _results;
+        }).apply(this), _queryFunc, function(err, resp) {
+          chart.draw();
+          done();
+        });
+      });
+    });
+    describe("DATABASE end", function() {
       var _this = this;
       it("Delete the created table", function(done) {
         var query;
@@ -441,6 +484,19 @@
           should.not.exist(err);
           done();
         });
+      });
+    });
+    return describe("Connection tests", function() {
+      var _this = this;
+      this.timeout(900000000);
+      return it("Check incorrect connection (Except: error)", function(done) {
+        var query;
+        MSSQLClientFalseCon.on("error", function(msg) {
+          should.exist(msg);
+          done();
+        });
+        query = MSSQLClientFalseCon.query("				SELECT TOP 1 ID 				FROM " + TABLENAME + " 			");
+        query.exec(function(err, res) {});
       });
     });
   });

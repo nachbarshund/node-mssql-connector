@@ -11,7 +11,7 @@ Run queries or stored procedures. Based on [tedious by Mike D Pilsbury](http://p
 - Get the data in JSON format
 - Run the test to check that everything is correct
 
-CurrentVersion: `0.4`
+CurrentVersion: `0.5.0`
 
 ## Installation
 
@@ -40,6 +40,16 @@ MSSQLClient = new MSSQLConnector( {
 		}
 	}
 })
+```
+
+### Connection error handling
+Since `v0.5.0`:
+
+```js
+# Initiliazed client
+MSSQLClient.on( "error", function( error ){
+	// handle error
+} );
 ```
 
 ### SQL statement  
@@ -94,7 +104,7 @@ query.exec( function( err, res ){
 })
 ```
 
-Since `v0.2.1`:
+Since `v0.2.1`:  
 You can also add a list of (Array) parameters into one param statement, e.g.
 
 	query = MSSQLClient.query( "
@@ -178,7 +188,7 @@ To run a local (test) enviroment for mssql use the awesome tool from fgrehm via 
 
 ## The MIT License (MIT)
 
-Copyright © 2014 - 2015 Christopher Zotter  
+Copyright © 2014 - 2016 Christopher Zotter  
 [http://www.tcs.de](http://www.tcs.de) | [http://www.webCIT.de](http://www.webCIT.de)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
