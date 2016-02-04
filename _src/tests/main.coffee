@@ -18,7 +18,8 @@ catch error
 
 
 # Here must be set the connection settings
-MSSQLClient 		=  	new MSSQLConnector( config )
+MSSQLClient 		=  	new MSSQLConnector( config.config1 )
+MSSQLClient2 		=  	new MSSQLConnector( config.config2 )
 
 # This must be empty to check wrong connection
 MSSQLClientFalseCon  =  	new MSSQLConnector
@@ -59,8 +60,23 @@ describe "Test for node-mssql-connector", ->
 		return
 
 	describe "Init setup", ->
-		it "Create new table", ( done ) =>
+		it "Create new tables", ( done ) =>
 			query = MSSQLClient.query( "
+				CREATE TABLE #{ TABLENAME } 
+				(
+					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
+					Name varchar( 250 ) default '',
+					jahrgang int,
+					Created smalldatetime default getDate()
+				)
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				done()
+				return	
+			return
+
+			query = MSSQLClient2.query( "
 				CREATE TABLE #{ TABLENAME } 
 				(
 					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
@@ -182,6 +198,7 @@ describe "Test for node-mssql-connector", ->
 				return
 			return
 
+
 	describe "Syntax checks", ->
 		
 		it "Test SQL injection", ( done )=>
@@ -200,7 +217,7 @@ describe "Test for node-mssql-connector", ->
 
 	describe "INSERT statements", ->
 		
-		it "Insert new item", ( done )=>
+		it "Insert new item2", ( done )=>
 			query = MSSQLClient.query( "
 				INSERT INTO #{ TABLENAME } ( 
 					Name, 
@@ -225,7 +242,34 @@ describe "Test for node-mssql-connector", ->
 				TESTVARIABLES.insertnewid = result[ 0 ].id
 
 				done()
-				return				
+				return
+			return
+
+			query = MSSQLClient2.query( "
+				INSERT INTO #{ TABLENAME } ( 
+					Name, 
+					jahrgang 
+				) 
+				VALUES( @name, @jahrgang )
+				SELECT @@IDENTITY AS 'id'
+			" )
+			query.param( "name", "VarChar",  "Username" )
+			query.param( "jahrgang", "Int",  23 )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				
+				res.should.have.keys( ['result', 'rowcount'] )
+				( res.rowcount ).should.equal( 2 )
+				
+				result = res.result
+				result.should.be.an.instanceOf( Array )
+				result[ 0 ].should.have.keys( ["id"] )
+
+				# Save this for next check
+				TESTVARIABLES.insertnewid = result[ 0 ].id
+
+				done()
+				return
 			return
 
 		it "Insert with integer > 2147483647", ( done )=>
@@ -398,6 +442,30 @@ describe "Test for node-mssql-connector", ->
 			query.exec ( err, res ) ->
 				should.not.exist( err )
 				res.should.have.keys( ["result", "rowcount"] )
+				done()
+				return
+
+		it "Select from different databases (Part 1)", ( done ) =>
+			query = MSSQLClient.query( "
+				SELECT     TOP 1 *
+				FROM       #{ TABLENAME }
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 1 )
+				done()
+				return
+
+		it "Select from different databases (Part 2)", ( done ) =>
+			query = MSSQLClient2.query( "
+				SELECT     TOP 1 *
+				FROM       #{ TABLENAME }
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				res.should.have.keys( ["result", "rowcount"] )
+				( res.rowcount ).should.equal( 1 )
 				done()
 				return
 	
@@ -624,9 +692,18 @@ describe "Test for node-mssql-connector", ->
 
 	describe "DATABASE end", ->
 		
-		it "Delete the created table", ( done ) =>
+		it "Delete the created tables", ( done ) =>
 
 			query = MSSQLClient.query( "
+				DROP TABLE Dbo.#{ TABLENAME } 
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				done()
+				return	
+			return
+
+			query = MSSQLClient2.query( "
 				DROP TABLE Dbo.#{ TABLENAME } 
 			" )
 			query.exec ( err, res ) ->

@@ -1,5 +1,5 @@
 (function() {
-  var Chart, MSSQLClient, MSSQLClientFalseCon, MSSQLConnector, ProgressBar, TABLENAME, TESTVARIABLES, async, config, should;
+  var Chart, MSSQLClient, MSSQLClient2, MSSQLClientFalseCon, MSSQLConnector, ProgressBar, TABLENAME, TESTVARIABLES, async, config, should;
 
   should = require("should");
 
@@ -19,7 +19,9 @@
     return;
   }
 
-  MSSQLClient = new MSSQLConnector(config);
+  MSSQLClient = new MSSQLConnector(config.config1);
+
+  MSSQLClient2 = new MSSQLConnector(config.config2);
 
   MSSQLClientFalseCon = new MSSQLConnector({
     detailerror: true,
@@ -56,9 +58,15 @@
     });
     describe("Init setup", function() {
       var _this = this;
-      return it("Create new table", function(done) {
+      return it("Create new tables", function(done) {
         var query;
         query = MSSQLClient.query("				CREATE TABLE " + TABLENAME + " 				(					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),					Name varchar( 250 ) default '',					jahrgang int,					Created smalldatetime default getDate()				)			");
+        query.exec(function(err, res) {
+          should.not.exist(err);
+          done();
+        });
+        return;
+        query = MSSQLClient2.query("				CREATE TABLE " + TABLENAME + " 				(					ID INT NOT NULL PRIMARY KEY IDENTITY(1, 1),					Name varchar( 250 ) default '',					jahrgang int,					Created smalldatetime default getDate()				)			");
         query.exec(function(err, res) {
           should.not.exist(err);
           done();
@@ -146,9 +154,24 @@
     });
     describe("INSERT statements", function() {
       var _this = this;
-      it("Insert new item", function(done) {
+      it("Insert new item2", function(done) {
         var query;
         query = MSSQLClient.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )				SELECT @@IDENTITY AS 'id'			");
+        query.param("name", "VarChar", "Username");
+        query.param("jahrgang", "Int", 23);
+        query.exec(function(err, res) {
+          var result;
+          should.not.exist(err);
+          res.should.have.keys(['result', 'rowcount']);
+          res.rowcount.should.equal(2);
+          result = res.result;
+          result.should.be.an.instanceOf(Array);
+          result[0].should.have.keys(["id"]);
+          TESTVARIABLES.insertnewid = result[0].id;
+          done();
+        });
+        return;
+        query = MSSQLClient2.query("				INSERT INTO " + TABLENAME + " ( 					Name, 					jahrgang 				) 				VALUES( @name, @jahrgang )				SELECT @@IDENTITY AS 'id'			");
         query.param("name", "VarChar", "Username");
         query.param("jahrgang", "Int", 23);
         query.exec(function(err, res) {
@@ -275,13 +298,33 @@
           done();
         });
       });
-      return it("Select with IN statement (ids)", function(done) {
+      it("Select with IN statement (ids)", function(done) {
         var query;
         query = MSSQLClient.query("				SELECT     *				FROM       " + TABLENAME + " 				WHERE     ID IN (@idlist)			");
         query.param("idlist", "Int", [1, 2, 3]);
         return query.exec(function(err, res) {
           should.not.exist(err);
           res.should.have.keys(["result", "rowcount"]);
+          done();
+        });
+      });
+      it("Select from different databases (Part 1)", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT     TOP 1 *				FROM       " + TABLENAME + "			");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.should.have.keys(["result", "rowcount"]);
+          res.rowcount.should.equal(1);
+          done();
+        });
+      });
+      return it("Select from different databases (Part 2)", function(done) {
+        var query;
+        query = MSSQLClient2.query("				SELECT     TOP 1 *				FROM       " + TABLENAME + "			");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.should.have.keys(["result", "rowcount"]);
+          res.rowcount.should.equal(1);
           done();
         });
       });
@@ -477,9 +520,15 @@
     });
     describe("DATABASE end", function() {
       var _this = this;
-      it("Delete the created table", function(done) {
+      it("Delete the created tables", function(done) {
         var query;
         query = MSSQLClient.query("				DROP TABLE Dbo." + TABLENAME + " 			");
+        query.exec(function(err, res) {
+          should.not.exist(err);
+          done();
+        });
+        return;
+        query = MSSQLClient2.query("				DROP TABLE Dbo." + TABLENAME + " 			");
         query.exec(function(err, res) {
           should.not.exist(err);
           done();
