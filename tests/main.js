@@ -46,7 +46,7 @@
 
   TESTVARIABLES = {};
 
-  TABLENAME = "GruntTest19";
+  TABLENAME = "GruntTest21";
 
   describe("Test for node-mssql-connector", function() {
     this.timeout(5000);
@@ -351,6 +351,36 @@
           res.rowcount.should.equal(1);
           result = res.result;
           result.should.be.an.instanceOf(Array);
+          done();
+        });
+      });
+    });
+    describe("Tests for connection pool with different databases", function() {
+      var _this = this;
+      it("Check database on first client (1/3)", function(done) {
+        var query;
+        query = MSSQLClient.query("					SELECT db_name() as db				");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.result[0].db.should.equal(config.config1.connection.options.database);
+          done();
+        });
+      });
+      it("Check database on second client (2/3)", function(done) {
+        var query;
+        query = MSSQLClient2.query("					SELECT db_name() as db				");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.result[0].db.should.equal(config.config2.connection.options.database);
+          done();
+        });
+      });
+      return it("Check database on first client again (3/3)", function(done) {
+        var query;
+        query = MSSQLClient.query("				SELECT db_name() as db			");
+        return query.exec(function(err, res) {
+          should.not.exist(err);
+          res.result[0].db.should.equal(config.config1.connection.options.database);
           done();
         });
       });

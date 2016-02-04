@@ -4,9 +4,6 @@ ConnectionPool 	= require( "tedious-connection-pool" )
 DataTypes 		= require( "tedious" ).TYPES
 Request 		= require( "tedious" ).Request
 
-# Reset connection pool on every instance of client
-connectionpool = null
-
 
 class MSSQLRequestBase extends require( "./base" )
 
@@ -481,7 +478,7 @@ module.exports = class MSSQLConnector extends require( "./base" )
 		# Reset the error 
 		@_error = null
 		
-		connectionpool.acquire ( err, connection ) =>
+		@connectionpool.acquire ( err, connection ) =>
 			if err
 				# Release connection on error
 				connection.release()
@@ -512,7 +509,7 @@ module.exports = class MSSQLConnector extends require( "./base" )
 				request.removeAllListeners()
 
 				# Reset connetion tries after request was successfull
-				connectionpool.connectiontries = 0
+				@connectionpool.connectiontries = 0
 
 				# Return the data
 				cb( null,  returnobj )
@@ -612,18 +609,21 @@ module.exports = class MSSQLConnector extends require( "./base" )
 		# Mark as inited
 		@isinit = true
 
+		# Reset connection pool on every instance of client
+		@connectionpool = null
+
 		# Init connection pool
-		connectionpool = new ConnectionPool( @config.poolconfig, @config.connection )
+		@connectionpool = new ConnectionPool( @config.poolconfig, @config.connection )
 
 		# On start set tries to 0
-		connectionpool.connectiontries = 0
+		@connectionpool.connectiontries = 0
 
 		# Error handling for connection pool
-		connectionpool.on "error", ( err, connection ) =>
+		@connectionpool.on "error", ( err, connection ) =>
 			if err.name.toLowerCase() is "connectionerror"
-				connectionpool.connectiontries++
-				if @config.poolconfig.tries is connectionpool.connectiontries
-					connectionpool.drain()
+				@connectionpool.connectiontries++
+				if @config.poolconfig.tries is @connectionpool.connectiontries
+					@connectionpool.drain()
 					@_handleError( @_errorCb, "connection-failed", err )
 					return
 				return

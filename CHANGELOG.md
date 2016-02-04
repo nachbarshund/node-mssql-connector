@@ -1,4 +1,7 @@
 # Changelog
+`v1.1.0`
+- Fix [#13] Multiple connection to different databases
+
 `v1.0.0`
 
 - Fix [#11](https://github.com/Nachbarshund/node-mssql-connector/issues/11) Remove memory leak in connection pool. There is also a test for memory leak.

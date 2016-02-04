@@ -43,7 +43,7 @@ MSSQLClientFalseCon  =  	new MSSQLConnector
 TESTVARIABLES  = {}
 
 # Name for test table
-TABLENAME 	=  "GruntTest19"
+TABLENAME 	=  "GruntTest21"
 
 
 describe "Test for node-mssql-connector", ->
@@ -468,6 +468,9 @@ describe "Test for node-mssql-connector", ->
 				( res.rowcount ).should.equal( 1 )
 				done()
 				return
+
+
+
 	
 	
 	describe "DELETE statements", ->
@@ -499,6 +502,37 @@ describe "Test for node-mssql-connector", ->
 				done()
 				return
 
+	describe "Tests for connection pool with different databases", ->
+
+		it "Check database on first client (1/3)", ( done ) =>
+			query = MSSQLClient.query( "
+					SELECT db_name() as db
+				" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.result[ 0 ].db ).should.equal( config.config1.connection.options.database )
+				done()
+				return
+
+		it "Check database on second client (2/3)", ( done ) =>
+			query = MSSQLClient2.query( "
+					SELECT db_name() as db
+				" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.result[ 0 ].db ).should.equal( config.config2.connection.options.database )
+				done()
+				return
+
+		it "Check database on first client again (3/3)", ( done ) =>
+			query = MSSQLClient.query( "
+				SELECT db_name() as db
+			" )
+			query.exec ( err, res ) ->
+				should.not.exist( err )
+				( res.result[ 0 ].db ).should.equal( config.config1.connection.options.database )
+				done()
+				return
 
 	describe "TESTS for tedious v1.11.5", ->
 
