@@ -1,4 +1,7 @@
 # Changelog
+`v1.2.0`  
+- Upgrade to lodash version 4.6.x
+
 `v1.1.0`
 - Fix [#13] Multiple connection to different databases
 

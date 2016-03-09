@@ -1,4 +1,5 @@
-_ 				= require( "lodash" )._
+_isFunction		= require( "lodash/isFunction" )
+_isArray		= require( "lodash/isArray" )
 extend 			= require( "extend" )
 ConnectionPool 	= require( "tedious-connection-pool" )
 DataTypes 		= require( "tedious" ).TYPES
@@ -119,7 +120,7 @@ class MSSQLRequestBase extends require( "./base" )
 			return @
 
 		# If its is an array then add IN statement
-		if _.isArray( value )
+		if _isArray( value )
 			@_addINStatement( field, datatype, value )
 			return
 
@@ -246,7 +247,7 @@ class MSSQLRequestBase extends require( "./base" )
 		if @config.sqlparams
 			return true
 
-		paramkeys = _.keys( @_params )
+		paramkeys = Object.keys( @_params )
 
 		# Check if there are all files set
 		for _field in @_fields
@@ -326,7 +327,7 @@ class MSSQLRequestBase extends require( "./base" )
 		for _key, _param of @_params
 			request.addParameter _key, _param.type, _param.value
 
-		if _.isFunction( cb )
+		if _isFunction( cb )
 			cb()		
 			return
 
